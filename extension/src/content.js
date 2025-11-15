@@ -54,8 +54,9 @@ let toggleImgListener;
 let hideImages = false;
 let imageObserver;
 
-// Track active feature states
+// Track active feature states - MUST match storageKey in popup toggles!
 let activeFeatureStates = {
+  voiceControlEnabled: false,
   hideImagesEnabled: false,
   highContrastEnabled: false,
   highlightLinksEnabled: false,
@@ -73,8 +74,7 @@ let activeFeatureStates = {
   removePopupsEnabled: false,
   readingModeEnabled: false,
   disableStickyEnabled: false,
-  disableHoverEnabled: false,
-  voiceControlEnabled: false
+  disableHoverEnabled: false
 };
 
 // ============================================================
@@ -83,8 +83,61 @@ let activeFeatureStates = {
 
 document.addEventListener('visoraVoiceCommand', function(event) {
   const { action, enabled } = event.detail;
+  console.log('📢 Voice command received:', action, enabled);
   handleFeatureToggle(action, enabled);
 });
+
+// ============================================================
+// INITIALIZATION - RESTORE FEATURES ON PAGE LOAD
+// ============================================================
+
+// Restore all enabled features when content script loads
+(function initializeFeatures() {
+  console.log('🚀 Initializing Visora features...');
+  
+  // Use chrome.runtime to get tab ID from background script
+  chrome.runtime.sendMessage({ action: 'getTabId' }, (response) => {
+    if (chrome.runtime.lastError) {
+      console.warn('⚠️ Could not get tab ID:', chrome.runtime.lastError.message);
+      return;
+    }
+    
+    const tabId = response?.tabId;
+    if (!tabId) {
+      console.warn('⚠️ Could not determine tab ID');
+      return;
+    }
+    
+    const storageKeys = Object.keys(activeFeatureStates);
+    
+    chrome.storage.local.get(storageKeys, (result) => {
+      if (chrome.runtime.lastError) {
+        console.warn('⚠️ Could not load storage:', chrome.runtime.lastError.message);
+        return;
+      }
+      
+      console.log('📦 Loaded storage for tab', tabId);
+      
+      let restoredCount = 0;
+      storageKeys.forEach((key) => {
+        const tabState = result[key] || {};
+        const enabled = tabState[tabId] || false;
+        
+        if (enabled) {
+          console.log('✅ Restoring feature:', key);
+          handleFeatureToggle(key, true);
+          restoredCount++;
+        }
+      });
+      
+      if (restoredCount > 0) {
+        console.log(`✅ Restored ${restoredCount} features`);
+      } else {
+        console.log('ℹ️ No features to restore');
+      }
+    });
+  });
+})();
 
 // ============================================================
 // FEATURE HANDLER FUNCTION
@@ -174,28 +227,36 @@ function handleFeatureToggle(action, enabled) {
 // ============================================================
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-  // Handle getting current feature states
-  if (request.action === "getFeatureStates") {
-    sendResponse({ states: activeFeatureStates });
-    return true; // Keep channel open for async response
-  }
+  try {
+    // Handle getting current feature states
+    if (request.action === "getFeatureStates") {
+      sendResponse({ states: activeFeatureStates });
+      return true; // Keep channel open for async response
+    }
 
-  // Handle voice control toggle
-  if (request.action === "voiceControlEnabled") {
-    toggleVoiceControl(request.enabled);
-    activeFeatureStates.voiceControlEnabled = request.enabled;
-    return;
-  }
-  
-  if (request.action === "getVoiceControlStatus") {
-    sendResponse(getVoiceControlStatus());
-    return;
-  }
+    // Handle voice control toggle
+    if (request.action === "voiceControlEnabled") {
+      toggleVoiceControl(request.enabled);
+      activeFeatureStates.voiceControlEnabled = request.enabled;
+      sendResponse({ success: true });
+      return true;
+    }
+    
+    if (request.action === "getVoiceControlStatus") {
+      sendResponse(getVoiceControlStatus());
+      return true;
+    }
 
-  // Handle all other feature toggles
-  if (request.action && request.enabled !== undefined) {
-    handleFeatureToggle(request.action, request.enabled);
-    return;
+    // Handle all other feature toggles
+    if (request.action && request.enabled !== undefined) {
+      handleFeatureToggle(request.action, request.enabled);
+      sendResponse({ success: true });
+      return true;
+    }
+  } catch (error) {
+    console.error('Error handling message:', error);
+    sendResponse({ success: false, error: error.message });
+    return true;
   }
 
   // Handle special cases

@@ -1,41 +1,63 @@
-// ============================================================
-// FEATURE: Reading Focus Line Guide
-// DESCRIPTION: Creates a horizontal line with triangle pointer
-//              that follows cursor to assist with reading focus
-// ============================================================
+
 
 let focusLine = null;
 let focusTriangle = null;
+let focusLineTop = null;
+let focusLineBottom = null;
 
 export function focusLineEnabled(enabled) {
   if (enabled) {
     if (!focusLine) {
-      // Create the focus line
+      // Create the main focus line (semi-transparent)
       focusLine = document.createElement("div");
       focusLine.style.position = "fixed";
       focusLine.style.left = 0;
       focusLine.style.right = 0;
-      focusLine.style.height = "5px";
-      focusLine.style.backgroundColor = "blue";
+      focusLine.style.height = "2px";
+      focusLine.style.backgroundColor = "rgba(59, 130, 246, 0.6)"; // Semi-transparent blue
       focusLine.style.pointerEvents = "none";
-      focusLine.style.zIndex = "9999";
+      focusLine.style.zIndex = "999999";
+      focusLine.style.boxShadow = "0 0 8px rgba(59, 130, 246, 0.8)"; // Glow effect
       document.body.appendChild(focusLine);
 
-      // Create the triangle
+      // Create top border line
+      focusLineTop = document.createElement("div");
+      focusLineTop.style.position = "fixed";
+      focusLineTop.style.left = 0;
+      focusLineTop.style.right = 0;
+      focusLineTop.style.height = "1px";
+      focusLineTop.style.backgroundColor = "rgba(59, 130, 246, 0.3)";
+      focusLineTop.style.pointerEvents = "none";
+      focusLineTop.style.zIndex = "999999";
+      document.body.appendChild(focusLineTop);
+
+      // Create bottom border line
+      focusLineBottom = document.createElement("div");
+      focusLineBottom.style.position = "fixed";
+      focusLineBottom.style.left = 0;
+      focusLineBottom.style.right = 0;
+      focusLineBottom.style.height = "1px";
+      focusLineBottom.style.backgroundColor = "rgba(59, 130, 246, 0.3)";
+      focusLineBottom.style.pointerEvents = "none";
+      focusLineBottom.style.zIndex = "999999";
+      document.body.appendChild(focusLineBottom);
+
+      // Create the triangle pointer
       focusTriangle = document.createElement("div");
       focusTriangle.style.position = "fixed";
       focusTriangle.style.width = "0";
       focusTriangle.style.height = "0";
-      focusTriangle.style.borderLeft = "10px solid transparent"; // Adjust size as needed
-      focusTriangle.style.borderRight = "10px solid transparent"; // Adjust size as needed
-      focusTriangle.style.borderBottom = "10px solid blue"; // Adjust color and size as needed
-      focusTriangle.style.zIndex = "10000"; // Should be above the line
-      focusTriangle.style.pointerEvents = "none"; // Ignore mouse events
+      focusTriangle.style.borderLeft = "8px solid transparent";
+      focusTriangle.style.borderRight = "8px solid transparent";
+      focusTriangle.style.borderBottom = "8px solid rgba(59, 130, 246, 0.8)";
+      focusTriangle.style.zIndex = "1000000";
+      focusTriangle.style.pointerEvents = "none";
+      focusTriangle.style.filter = "drop-shadow(0 0 3px rgba(59, 130, 246, 0.6))";
       document.body.appendChild(focusTriangle);
     }
     // Event listener to update position of focus line and triangle
     document.addEventListener("mousemove", function (e) {
-      updateFocusLine(e, focusLine, focusTriangle);
+      updateFocusLine(e, focusLine, focusTriangle, focusLineTop, focusLineBottom);
     });
   } else {
     document.removeEventListener("mousemove", updateFocusLine);
@@ -48,20 +70,37 @@ export function focusLineEnabled(enabled) {
       focusTriangle.remove();
       focusTriangle = null;
     }
+    if (focusLineTop) {
+      focusLineTop.remove();
+      focusLineTop = null;
+    }
+    if (focusLineBottom) {
+      focusLineBottom.remove();
+      focusLineBottom = null;
+    }
   }
 }
 
-function updateFocusLine(e, focusLine, focusTriangle) {
+function updateFocusLine(e, focusLine, focusTriangle, focusLineTop, focusLineBottom) {
   if (focusLine !== null && focusTriangle !== null) {
     // Use clientY for vertical position to avoid issues with scrolling
     const yPosition = e.clientY;
 
-    // Update focus line position to follow the mouse cursor
+    // Update main focus line position to follow the mouse cursor
     focusLine.style.top = `${yPosition}px`;
 
+    // Update top border line (20px above)
+    if (focusLineTop) {
+      focusLineTop.style.top = `${yPosition - 20}px`;
+    }
+
+    // Update bottom border line (20px below)
+    if (focusLineBottom) {
+      focusLineBottom.style.top = `${yPosition + 20}px`;
+    }
+
     // Update triangle position
-    // The '- 10' is to account for the height of the triangle to center it vertically around the cursor
-    focusTriangle.style.left = `${e.clientX - 10}px`; // Adjust '- 10' if the size of the triangle changes
-    focusTriangle.style.top = `${yPosition - 10}px`; // Keep the triangle centered with the cursor
+    focusTriangle.style.left = `${e.clientX - 8}px`;
+    focusTriangle.style.top = `${yPosition - 8}px`;
   }
 }

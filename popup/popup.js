@@ -224,10 +224,24 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
                 if (checkbox && checkbox.checked !== newValue[currentTabId]) {
                     checkbox.checked = newValue[currentTabId];
                     toggleStates[toggle.storageKey] = newValue[currentTabId];
-                    console.log('Toggle updated from voice command:', toggle.id, newValue[currentTabId]);
+                    console.log('🔄 Toggle updated from voice command:', toggle.id, newValue[currentTabId]);
+                    
+                    // Show/hide slider controls if applicable
+                    const toggleItem = checkbox.closest('.toggle-item');
+                    const sliderControl = toggleItem?.querySelector('.toggle-slider-control');
+                    if (sliderControl) {
+                        if (newValue[currentTabId]) {
+                            sliderControl.classList.add('visible');
+                        } else {
+                            sliderControl.classList.remove('visible');
+                        }
+                    }
                 }
             }
         }
+        
+        // Re-detect active preset after changes
+        detectActivePreset();
     }
 });
 

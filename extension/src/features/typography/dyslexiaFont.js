@@ -1,8 +1,3 @@
-// ============================================================
-// FEATURE: Dyslexia-Friendly Font Injection
-// DESCRIPTION: Replaces page fonts with OpenDyslexic font
-//              designed specifically for readers with dyslexia
-// ============================================================
 
 export function toggleDyslexiaFont(enableFont) {
   const styleId = "dyslexia-friendly-style";
@@ -20,8 +15,8 @@ export function toggleDyslexiaFont(enableFont) {
         @font-face {
           font-family: 'OpenDyslexic';
           src: url('${chrome.runtime.getURL(
-            "assets/OpenDyslexic.otf"
-          )}') format('opentype');
+      "assets/OpenDyslexic.otf"
+    )}') format('opentype');
         }
 
         body, button, input, textarea, select, p, li, span, div  {

@@ -1,8 +1,4 @@
-// ============================================================
-// FEATURE: Link Highlighting System
-// DESCRIPTION: Makes all links highly visible with yellow background
-//              and black text for easier navigation
-// ============================================================
+
 
 const originalStyles = new Map();
 

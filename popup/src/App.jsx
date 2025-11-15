@@ -31,6 +31,12 @@ import { useActiveTabId } from "@/hooks/use-active-tab";
 
 const FEATURE_TOGGLES = [
   {
+    id: "voice-control",
+    label: "Voice Control",
+    description: "Control features using voice commands (say 'help' for commands).",
+    storageKey: "voiceControlEnabled",
+  },
+  {
     id: "hide-images",
     label: "Hide Images",
     description: "Remove images from the page to reduce sensory load.",
@@ -295,6 +301,41 @@ export default function App() {
       });
     });
   }, []);
+
+  // ============================================================
+  // FEATURE: Storage Change Listener for Voice Command Sync
+  // DESCRIPTION: Listens for storage changes from voice commands
+  //              and updates popup toggles in real-time
+  // ============================================================
+
+  useEffect(() => {
+    if (!tabId) return;
+
+    const handleStorageChange = (changes, namespace) => {
+      if (namespace !== 'local') return;
+
+      // Update toggles when storage changes (from voice commands)
+      for (const [key, { oldValue, newValue }] of Object.entries(changes)) {
+        // Check if this is a feature toggle
+        const toggle = FEATURE_TOGGLES.find(t => t.storageKey === key);
+        if (toggle && newValue && newValue[tabId] !== undefined) {
+          const currentState = toggles[toggle.storageKey];
+          const newState = newValue[tabId];
+          
+          if (currentState !== newState) {
+            console.log('🔄 Syncing toggle from voice command:', toggle.storageKey, newState);
+            setToggles((prev) => ({ ...prev, [toggle.storageKey]: newState }));
+          }
+        }
+      }
+    };
+
+    chrome.storage.onChanged.addListener(handleStorageChange);
+
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChange);
+    };
+  }, [tabId, toggles]);
 
   // ============================================================
   // FEATURE: Current Domain Detection

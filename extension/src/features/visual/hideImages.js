@@ -1,28 +1,9 @@
-// ============================================================
-// FEATURE: Image Visibility Control
-// DESCRIPTION: Hides/shows images and background images to
-//              reduce sensory overload for sensitive users
-// ============================================================
 
-let toggleImgListener;
+
 let hideImages = false;
-let imageObserver;
+let imageObserver = null;
 
-export function handleHideImages(request) {
-  hideImages = request.enabled;
-  toggleImagesVisibility();
-  if (hideImages) {
-    imageObserver = observeNewElements();
-    toggleImgListener = window.addEventListener("scroll", () => {
-      toggleImagesVisibility();
-    });
-  } else if (imageObserver) {
-    imageObserver.disconnect();
-    window.removeEventListener("scroll", toggleImgListener);
-  }
-}
-
-function toggleImagesVisibility() {
+export function toggleImagesVisibility() {
   const images = document.querySelectorAll("img");
   images.forEach((img) => {
     img.style.visibility = hideImages ? "hidden" : "visible";
@@ -35,8 +16,7 @@ function toggleImagesVisibility() {
   });
 }
 
-// Function to observe new images added to the document and hide them if needed
-function observeNewElements() {
+export function observeNewElements() {
   imageObserver = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
       mutation.addedNodes.forEach((node) => {
@@ -61,4 +41,19 @@ function observeNewElements() {
   });
 
   return imageObserver;
+}
+
+export function setHideImages(value) {
+  hideImages = value;
+}
+
+export function getImageObserver() {
+  return imageObserver;
+}
+
+export function disconnectImageObserver() {
+  if (imageObserver) {
+    imageObserver.disconnect();
+    imageObserver = null;
+  }
 }

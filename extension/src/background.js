@@ -1,4 +1,37 @@
 // ============================================================
+// FEATURE: Message Handler for Tab ID Requests
+// DESCRIPTION: Helps content scripts get their tab ID reliably
+// ============================================================
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'getTabId') {
+        sendResponse({ tabId: sender.tab?.id });
+        return true;
+    }
+    
+    // Handle storage updates from voice commands in content script
+    if (request.action === 'updateFeatureStorage') {
+        const featureKey = request.featureKey;
+        const enabled = request.enabled;
+        const tabId = sender.tab?.id;
+        
+        if (tabId && featureKey) {
+            chrome.storage.local.get(featureKey, (result) => {
+                const tabState = result[featureKey] || {};
+                tabState[tabId] = enabled;
+                chrome.storage.local.set({ [featureKey]: tabState }, () => {
+                    console.log('✅ Background: Storage updated for', featureKey, enabled);
+                    sendResponse({ success: true });
+                });
+            });
+            return true; // Keep channel open for async response
+        } else {
+            sendResponse({ success: false, error: 'Missing tabId or featureKey' });
+        }
+    }
+});
+
+// ============================================================
 // FEATURE: Context Menu Setup & Installation Handler
 // DEVELOPER: Team Member 1
 // DESCRIPTION: Initializes right-click context menu items for
@@ -142,39 +175,48 @@ function startSpeechToText() {
 // Toggle features on tab update
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
     if (changeInfo.status === 'complete') {
-        chrome.storage.local.get(null, function(allStates) {
-            Object.keys(allStates).forEach((stateKey) => {
-                const isEnabled = allStates[stateKey]?.[tabId];
-                if (isEnabled) {
-                    const actions = {
-                        focusLineEnabled: 'focusLineEnabled',
-                        flashContentEnabled: 'flashContentEnabled',
-                        highlightLinksEnabled: 'highlightLinksEnabled',
-                        dyslexiaFontEnabled: 'dyslexiaFontEnabled',
-                        highContrastEnabled: 'highContrastEnabled',
-                        hideImagesEnabled: 'hideImagesEnabled',
-                        letterSpacingEnabled: 'letterSpacingEnabled',
-                        dimmerOverlayEnabled: 'dimmerOverlayEnabled',
-                        largeCursorEnabled: 'largeCursorEnabled',
-                        cursorSizeEnabled: 'cursorSizeEnabled',
-                        autocompleteEnabled: 'autocompleteEnabled',
-                        increaseFontSizeEnabled: 'increaseFontSizeEnabled',
-                        increaseLineHeightEnabled: 'increaseLineHeightEnabled',
-                        limitContentWidthEnabled: 'limitContentWidthEnabled',
-                        removePopupsEnabled: 'removePopupsEnabled',
-                        readingModeEnabled: 'readingModeEnabled',
-                        disableStickyEnabled: 'disableStickyEnabled',
-                        disableHoverEnabled: 'disableHoverEnabled',
-                    };
+        // Add a small delay to ensure content script is fully loaded
+        setTimeout(() => {
+            chrome.storage.local.get(null, function(allStates) {
+                const actions = {
+                    voiceControlEnabled: 'voiceControlEnabled',
+                    focusLineEnabled: 'focusLineEnabled',
+                    flashContentEnabled: 'flashContentEnabled',
+                    highlightLinksEnabled: 'highlightLinksEnabled',
+                    dyslexiaFontEnabled: 'dyslexiaFontEnabled',
+                    highContrastEnabled: 'highContrastEnabled',
+                    hideImagesEnabled: 'hideImagesEnabled',
+                    letterSpacingEnabled: 'letterSpacingEnabled',
+                    dimmerOverlayEnabled: 'dimmerOverlayEnabled',
+                    largeCursorEnabled: 'largeCursorEnabled',
+                    cursorSizeEnabled: 'cursorSizeEnabled',
+                    autocompleteEnabled: 'autocompleteEnabled',
+                    increaseFontSizeEnabled: 'increaseFontSizeEnabled',
+                    increaseLineHeightEnabled: 'increaseLineHeightEnabled',
+                    limitContentWidthEnabled: 'limitContentWidthEnabled',
+                    removePopupsEnabled: 'removePopupsEnabled',
+                    readingModeEnabled: 'readingModeEnabled',
+                    disableStickyEnabled: 'disableStickyEnabled',
+                    disableHoverEnabled: 'disableHoverEnabled',
+                };
+                
+                Object.keys(allStates).forEach((stateKey) => {
+                    const isEnabled = allStates[stateKey]?.[tabId];
                     const action = actions[stateKey];
-                    if (action) {
+                    
+                    if (action && isEnabled) {
+                        // Send message with error handling
                         chrome.tabs.sendMessage(tabId, {
                             action,
                             enabled: true
+                        }, (response) => {
+                            if (chrome.runtime.lastError) {
+                                console.log('Feature will be restored by content script initialization:', stateKey);
+                            }
                         });
                     }
-                }
+                });
             });
-        });
+        }, 100);
     }
 });
