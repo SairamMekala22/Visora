@@ -1,0 +1,223 @@
+// ============================================================
+// FEATURE: Context Menu Setup & Installation Handler
+// DEVELOPER: Team Member 1
+// DESCRIPTION: Initializes right-click context menu items for
+//              accessibility features on extension installation
+// ============================================================
+
+// Create context menu items
+chrome.runtime.onInstalled.addListener((details) => {
+    chrome.contextMenus.create({
+        id: "speak-selected-text",
+        title: "Speak Selection",
+        contexts: ["selection"],
+    });
+
+    chrome.contextMenus.create({
+        id: "speech-to-text",
+        title: "Speech-To-Text",
+        contexts: ["editable"],
+    });
+
+    chrome.contextMenus.create({
+        id: 'define',
+        title: 'Define Selection',
+        contexts: ['selection']
+    });
+
+    chrome.contextMenus.create({
+        id: 'focused-reading',
+        title: 'Apply Focused Reading',
+        contexts: ['selection']
+      });
+
+      chrome.contextMenus.create({
+        id: "summarize",
+        title: "Summarize Selection",
+        contexts: ["selection"],
+      });
+
+      chrome.contextMenus.create({
+        id: 'magnify-image',
+        title: 'Magnify',
+        contexts: ['image'],
+      });
+
+      chrome.contextMenus.create({
+        id: 'read-image',
+      title: 'Describe',
+      contexts: ['image'],
+});
+
+    if (details?.reason === 'install') {
+        const iconUrl = chrome.runtime.getURL('assets/128.png');
+        chrome.notifications?.create('visora-install-restart', {
+            type: 'basic',
+            iconUrl,
+            title: 'visora is ready',
+            message: 'If any features seem inactive, restart Chrome to finish enabling the extension.',
+            requireInteraction: true
+        }, () => {
+            if (chrome.runtime.lastError) {
+                console.warn('Install notification failed:', chrome.runtime.lastError.message);
+            }
+        });
+    }
+});
+
+// ============================================================
+// FEATURE: Text-to-Speech (TTS) Handler
+// DEVELOPER: Team Member 1
+// DESCRIPTION: Processes speak selection requests with customizable
+//              voice settings (rate, pitch, volume)
+// ============================================================
+
+// Handle context menu item clicks
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+    if (info.menuItemId === "speak-selected-text") {
+        const { rate = 1, pitch = 1, volume = 1, voice = "native" } = await chrome.storage.local.get(["rate", "pitch", "volume", "voice"]);
+        chrome.tts.speak(info.selectionText, {
+            rate,
+            pitch,
+            volume,
+            voiceName: voice,
+            onEvent: function (event) {
+                if (event.type === "error") {
+                    console.error("TTS Error: ", event.errorMessage);
+                }
+            },
+        });
+    } else if (info.menuItemId === "speech-to-text") {
+        chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            function: startSpeechToText,
+        });
+    } else if (info.menuItemId === 'define' && info.selectionText) {
+        const query = info.selectionText.trim();
+        if (/\s/.test(query)) {
+            // If the selection contains space, it might be more than one word
+            chrome.tabs.sendMessage(tab.id, {
+                action: 'alertUser',
+                message: 'Please select only a single word to define.'
+            });
+        } else {
+            // Proceed with fetching the definition
+            try {
+                const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${query}`);
+                const definitions = await response.json();
+                if (definitions.length > 0 && definitions[0].meanings.length > 0) {
+                    const definition = definitions[0].meanings[0].definitions[0].definition;
+                    chrome.tabs.sendMessage(tab.id, {
+                        action: 'showDefinition',
+                        definition,
+                        word: query
+                    });
+                }
+            } catch (error) {
+                chrome.tabs.sendMessage(tab.id, {
+                    action: 'alertUser',
+                    message: 'An error occurred while fetching the definition.'
+                });
+            }
+        }
+    } else if (info.menuItemId === 'focused-reading') {
+        chrome.tabs.sendMessage(tab.id, {
+          action: 'applyFocusedReading'
+        });
+    } else if (info.menuItemId === 'summarize') {
+        chrome.tabs.sendMessage(tab.id, {
+          action: 'summarizeSelection'
+        });
+      }
+      else if (info.menuItemId === 'magnify-image') {
+        chrome.tabs.sendMessage(tab.id, {
+          action: 'openMagnifiedImage',
+          srcUrl: info.srcUrl
+        });
+      }
+      else if (info.menuItemId === 'read-image') {
+        chrome.tabs.sendMessage(tab.id, {
+          action: 'readImage',
+          srcUrl: info.srcUrl
+        });
+      }
+});
+
+// ============================================================
+// FEATURE: Speech-to-Text Recognition
+// DEVELOPER: Team Member 2
+// DESCRIPTION: Converts spoken words into text input using
+//              Web Speech API for hands-free typing
+// ============================================================
+
+// Inject speech-to-text function into active tab
+function startSpeechToText() {
+    const activeElement = document.activeElement;
+
+    const recognition = new (window.SpeechRecognition ||
+        window.webkitSpeechRecognition)();
+    recognition.lang = "en-US";
+    recognition.start();
+
+    recognition.onresult = function (event) {
+        const transcript = event.results[0][0].transcript;
+        if (activeElement) {
+            activeElement.value += transcript;
+            activeElement.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+    };
+
+    recognition.onerror = function (event) {
+        console.error("Speech Recognition Error:", event.error);
+    };
+
+    recognition.onend = function () {
+        // Handle end of speech recognition
+    };
+}
+
+// ============================================================
+// FEATURE: Tab State Persistence & Feature Restoration
+// DEVELOPER: Team Member 2
+// DESCRIPTION: Restores enabled accessibility features when
+//              navigating to new pages within the same tab
+// ============================================================
+
+// Toggle features on tab update
+chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
+    if (changeInfo.status === 'complete') {
+        chrome.storage.local.get(null, function(allStates) {
+            Object.keys(allStates).forEach((stateKey) => {
+                const isEnabled = allStates[stateKey]?.[tabId];
+                if (isEnabled) {
+                    const actions = {
+                        focusLineEnabled: 'focusLineEnabled',
+                        flashContentEnabled: 'flashContentEnabled',
+                        highlightLinksEnabled: 'highlightLinksEnabled',
+                        dyslexiaFontEnabled: 'dyslexiaFontEnabled',
+                        highContrastEnabled: 'highContrastEnabled',
+                        hideImagesEnabled: 'hideImagesEnabled',
+                        letterSpacingEnabled: 'letterSpacingEnabled',
+                        dimmerOverlayEnabled: 'dimmerOverlayEnabled',
+                        largeCursorEnabled: 'largeCursorEnabled',
+                        autocompleteEnabled: 'autocompleteEnabled',
+                        increaseFontSizeEnabled: 'increaseFontSizeEnabled',
+                        increaseLineHeightEnabled: 'increaseLineHeightEnabled',
+                        limitContentWidthEnabled: 'limitContentWidthEnabled',
+                        removePopupsEnabled: 'removePopupsEnabled',
+                        readingModeEnabled: 'readingModeEnabled',
+                        disableStickyEnabled: 'disableStickyEnabled',
+                        disableHoverEnabled: 'disableHoverEnabled',
+                    };
+                    const action = actions[stateKey];
+                    if (action) {
+                        chrome.tabs.sendMessage(tabId, {
+                            action,
+                            enabled: true
+                        });
+                    }
+                }
+            });
+        });
+    }
+});
