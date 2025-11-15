@@ -1,6 +1,18 @@
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Hero = () => {
+  const [isAnimating, setIsAnimating] = useState(false);
+  const navigate = useNavigate();
+
+  const handleDownloadClick = () => {
+    setIsAnimating(true);
+    setTimeout(() => {
+      navigate('/download');
+    }, 800);
+  };
+
   return (
     <section id="home" className="container mx-auto px-6 py-24 md:py-32">
       <div className="grid grid-cols-1 md:grid-cols-[70%_30%] gap-12 items-center">
@@ -16,31 +28,49 @@ const Hero = () => {
           </p>
           <Button
             size="lg"
-            className="bg-[#0f1724] text-white rounded-full px-6 py-3 border-2 border-black inline-flex items-center gap-4 mx-auto hover:opacity-90 transition"
+            onClick={handleDownloadClick}
+            disabled={isAnimating}
+            className={`bg-[#0f1724] text-white rounded-full pl-1 pr-8 py-3 border-2 border-black inline-flex items-center gap-4 mx-auto hover:bg-[#000000] transition-all duration-300 overflow-hidden relative ${
+              isAnimating ? 'pr-1 bg-[#000000]' : ''
+            }`}
           >
-            <span className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+            <span
+              className={`w-10 h-10 bg-white rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-700 ease-in-out ${
+                isAnimating ? 'translate-x-[calc(100%+8rem)]' : 'translate-x-0'
+              }`}
+            >
               <svg
                 width="16"
                 height="16"
                 viewBox="0 0 24 24"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
-                aria-hidden
+                aria-hidden="true"
               >
-                <circle cx="6" cy="12" r="1.6" fill="#6B7280" />
-                <circle cx="12" cy="12" r="1.6" fill="#6B7280" />
-                <circle cx="18" cy="12" r="1.6" fill="#6B7280" />
+                <path
+                  d="M5 12h14m0 0l-7-7m7 7l-7 7"
+                  stroke="#000000"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             </span>
-            <span className="font-medium">Download Extension</span>
+            <span
+              className={`font-medium transition-opacity duration-300 ${
+                isAnimating ? 'opacity-0' : 'opacity-100'
+              }`}
+            >
+              Download Extension
+            </span>
           </Button>
         </div>
         <div className="relative h-[400px] md:h-[500px] animate-scale-in">
-          <div className="absolute inset-0 border-2 border-border rounded-lg bg-gradient-to-br from-muted to-background flex items-center justify-center">
+          <div className="absolute inset-0 border-2 border-border rounded-lg bg-gradient-to-br from-muted to-background overflow-hidden">
             <img
-              src="/placeholder.svg"
-              alt="Illustration"
-              className="w-full h-full max-w-md object-contain p-8"
+              src="/image.png"
+              alt="Visora Demo"
+              className="w-full h-full object-fill"
             />
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Type, Focus, Sparkles, User, Brain } from "lucide-react";
+import ScrollReveal from "@/components/ScrollReveal";
 
 const features = [
   {
@@ -33,26 +34,25 @@ const Features = () => {
   return (
     <section id="features" className="container mx-auto px-6 py-24 md:py-32 bg-muted/30">
       <div className="space-y-12">
-        <div className="text-center space-y-4">
-          <h2 className="text-4xl md:text-5xl font-light tracking-tight">Features</h2>
-          <p className="text-lg text-muted-foreground font-light max-w-2xl mx-auto">
+        <div className="text-center space-y-4 mb-20">
+          <ScrollReveal
+            containerClassName="text-center"
+            textClassName="text-4xl md:text-[5rem] font-bold tracking-tight"
+            baseOpacity={0.2}
+            baseRotation={2}
+            blurStrength={3}
+          >
+            Features
+          </ScrollReveal>
+          <ScrollReveal
+            containerClassName="max-w-2xl mx-auto"
+            textClassName="text-lg text-muted-foreground font-light"
+            baseOpacity={0.3}
+            baseRotation={1}
+            blurStrength={2}
+          >
             Powerful accessibility tools designed to adapt to your unique needs
-          </p>
-        </div>
-        
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
-          {features.map((feature, index) => (
-            <Card 
-              key={index}
-              className="p-8 border-2 border-border hover:scale-105 transition-smooth bg-background"
-            >
-              <feature.icon className="w-12 h-12 mb-6 text-foreground" strokeWidth={1.5} />
-              <h3 className="text-xl font-light mb-3 tracking-tight">{feature.title}</h3>
-              <p className="text-sm font-light text-muted-foreground leading-relaxed">
-                {feature.description}
-              </p>
-            </Card>
-          ))}
+          </ScrollReveal>
         </div>
       </div>
     </section>
