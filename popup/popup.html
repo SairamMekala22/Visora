@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visora - Accessibility Extension</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-content">
+                <img src="../extension/assets/fullsize.png" alt="Visora icon" class="icon">
+                <h1>visora</h1>
+            </div>
+            <button class="close-btn" id="closeBtn" aria-label="Close popup">×</button>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Text to Speech Section -->
+            <section class="section">
+                <h2 class="section-title">Text to Speech</h2>
+                <div class="tts-container">
+                    <!-- Rate -->
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>Rate</span>
+                            <span id="rateValue">1.0×</span>
+                        </div>
+                        <input type="range" id="rateSlider" min="0.1" max="10" step="0.1" value="1" class="slider">
+                    </div>
+
+                    <!-- Pitch -->
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>Pitch</span>
+                            <span id="pitchValue">1.0</span>
+                        </div>
+                        <input type="range" id="pitchSlider" min="0" max="2" step="0.1" value="1" class="slider">
+                    </div>
+
+                    <!-- Volume -->
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>Volume</span>
+                            <span id="volumeValue">1.0</span>
+                        </div>
+                        <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="1" class="slider">
+                    </div>
+
+                    <!-- Voice Selection -->
+                    <div class="voice-group">
+                        <label for="voiceSelect">Voice</label>
+                        <select id="voiceSelect" class="voice-select">
+                            <option value="">Loading voices…</option>
+                        </select>
+                        <p class="voice-description">Selected voice is used for text-to-speech commands triggered from the context menu.</p>
+                    </div>
+                </div>
+            </section>
+
+            <div class="separator"></div>
+
+            <!-- Quick Presets Section -->
+            <section class="section">
+                <h2 class="section-title">Quick Presets</h2>
+                <p class="section-description">Apply preset combinations for common needs.</p>
+                <div class="presets-grid">
+                    <button class="preset-btn" data-preset="focus">Focus Mode</button>
+                    <button class="preset-btn" data-preset="lowVision">Low Vision</button>
+                    <button class="preset-btn" data-preset="dyslexia">Dyslexia Support</button>
+                    <button class="preset-btn" data-preset="motor">Motor Assistance</button>
+                </div>
+            </section>
+
+            <div class="separator"></div>
+
+            <!-- ============================================================ -->
+            <!-- 🎯 TOGGLE BUTTONS UI - MAIN ACCESSIBILITY CONTROLS          -->
+            <!-- ============================================================ -->
+            <!-- This section renders all 17 accessibility feature toggles    -->
+            <!-- Each toggle has a label, description, and switch button      -->
+            <!-- Sliders appear below toggles when enabled                    -->
+            <!-- Connected to JavaScript for state management                 -->
+            <!-- ============================================================ -->
+            <section class="section">
+                <h2 class="section-title">Accessibility Toggles</h2>
+                <p class="section-description">Changes apply to the current tab and persist until you disable them.</p>
+                <div id="togglesContainer" class="toggles-container">
+                    <!-- Toggles will be dynamically generated here -->
+                </div>
+            </section>
+
+            <div class="separator"></div>
+
+            <!-- Per-Website Settings Section -->
+            <section class="section">
+                <h2 class="section-title">Per-Website Settings</h2>
+                <p class="section-description" id="domainDescription">No website detected</p>
+                <div class="site-buttons">
+                    <button class="btn btn-outline" id="saveForSiteBtn" disabled>Save for This Site</button>
+                    <button class="btn btn-outline" id="clearSiteBtn" disabled>Clear Site Settings</button>
+                </div>
+                <div class="switch-container">
+                    <label class="switch">
+                        <input type="checkbox" id="perSiteToggle" disabled>
+                        <span class="switch-slider"></span>
+                    </label>
+                    <label for="perSiteToggle" class="switch-label">Use per-site settings (when available)</label>
+                </div>
+            </section>
+
+            
+
+        <!-- Footer -->
+        <div class="footer">
+            <button class="btn btn-primary" id="saveTtsBtn">Save TTS Settings</button>
+            <button class="btn btn-outline" id="closeFooterBtn">Close</button>
+            <a href="mailto:timb63701@gmail.com" class="feedback-link">Report bugs or provide feedback</a>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
