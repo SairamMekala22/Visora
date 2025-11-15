@@ -30,18 +30,18 @@ const Hero = () => {
             size="lg"
             onClick={handleDownloadClick}
             disabled={isAnimating}
-            className={`bg-[#0f1724] text-white rounded-full pl-1 pr-8 py-3 border-2 border-black inline-flex items-center gap-4 mx-auto hover:bg-[#000000] transition-all duration-300 overflow-hidden relative ${
-              isAnimating ? 'pr-1 bg-[#000000]' : ''
+            className={`bg-black text-white rounded-full p-0 pr-12 border-[3px] border-black inline-flex items-center gap-4 mx-auto hover:bg-gray-900 transition-all duration-300 overflow-hidden relative ${
+              isAnimating ? 'pr-0' : ''
             }`}
           >
             <span
-              className={`w-10 h-10 bg-white rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-700 ease-in-out ${
-                isAnimating ? 'translate-x-[calc(100%+8rem)]' : 'translate-x-0'
+              className={`px-5 py-3 bg-white rounded-full flex items-center justify-center flex-shrink-0 transition-transform duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                isAnimating ? 'translate-x-[280px]' : 'translate-x-0'
               }`}
             >
               <svg
-                width="16"
-                height="16"
+                width="18"
+                height="18"
                 viewBox="0 0 24 24"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
@@ -49,15 +49,15 @@ const Hero = () => {
               >
                 <path
                   d="M5 12h14m0 0l-7-7m7 7l-7 7"
-                  stroke="#000000"
-                  strokeWidth="2"
+                  stroke="#6366F1"
+                  strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
               </svg>
             </span>
             <span
-              className={`font-medium transition-opacity duration-300 ${
+              className={`font-semibold text-base transition-opacity duration-300 whitespace-nowrap ${
                 isAnimating ? 'opacity-0' : 'opacity-100'
               }`}
             >
