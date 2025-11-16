@@ -112,12 +112,6 @@ const FEATURE_TOGGLES = [
         description: "Remove fixed headers and footers.",
         storageKey: "disableStickyEnabled",
     },
-    {
-        id: "disable-hover",
-        label: "Disable Hover Effects",
-        description: "Prevent hover-triggered actions.",
-        storageKey: "disableHoverEnabled",
-    },
 ];
 
 const PRESETS = {
