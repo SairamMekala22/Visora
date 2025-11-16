@@ -1,9 +1,4 @@
-// ============================================================
-// FEATURE: AI/ML Model Configuration & Setup
-// DEVELOPER: Team Member 3
-// DESCRIPTION: Initializes Hugging Face Transformers.js for
-//              AI-powered features (summarization, image captioning)
-// ============================================================
+
 
 import { pipeline, env } from '@xenova/transformers';
 let toggleImgListener;
@@ -12,12 +7,7 @@ let hideImages = false;
 env.allowLocalModels = false;
 env.backends.onnx.wasm.numThreads = 1;
 
-// ============================================================
-// FEATURE: Message Router & Feature Dispatcher
-// DEVELOPER: Team Member 3
-// DESCRIPTION: Central message handler that routes requests
-//              from popup/background to appropriate feature functions
-// ============================================================
+
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   switch (request.action) {
@@ -188,12 +178,6 @@ function observeNewElements() {
   });
 }
 
-// ============================================================
-// FEATURE: High Contrast Mode
-// DEVELOPER: Team Member 4
-// DESCRIPTION: Inverts page colors for better visibility
-//              for users with visual impairments
-// ============================================================
 
 function applyHighContrast(state) {
   const styleId = "high-contrast-style";
@@ -232,12 +216,6 @@ function applyHighContrast(state) {
   }
 }
 
-// ============================================================
-// FEATURE: Link Highlighting System
-// DEVELOPER: Team Member 5
-// DESCRIPTION: Makes all links highly visible with yellow background
-//              and black text for easier navigation
-// ============================================================
 
 const originalStyles = new Map();
 // Apply or remove the highlight class from links
@@ -277,12 +255,7 @@ style.sheet.insertRule(
   0
 );
 
-// ============================================================
-// FEATURE: Animation & Motion Control
-// DEVELOPER: Team Member 5
-// DESCRIPTION: Disables CSS animations, freezes GIFs, and pauses
-//              autoplay videos for users with epilepsy/motion sensitivity
-// ============================================================
+
 
 let flashObserver = null;
 let freezeGifsOnScroll = null;
