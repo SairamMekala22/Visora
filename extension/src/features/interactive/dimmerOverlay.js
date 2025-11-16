@@ -7,6 +7,7 @@ export function toggleDimmerOverlay(enabled) {
     if (!flashlightOverlay) {
       // Create the dimmer overlay if it doesn't exist
       flashlightOverlay = document.createElement("div");
+      flashlightOverlay.id = "visora-dimmer-overlay"; // Add ID to prevent conflicts
       flashlightOverlay.style.position = "fixed";
       flashlightOverlay.style.top = "0";
       flashlightOverlay.style.left = "0";
@@ -15,12 +16,14 @@ export function toggleDimmerOverlay(enabled) {
       flashlightOverlay.style.backgroundColor = "rgba(0, 0, 0, 0.7)"; // Darker for flashlight effect
       flashlightOverlay.style.zIndex = "99999"; // High z-index to cover the page
       flashlightOverlay.style.pointerEvents = "none"; // Allows clicking through the overlay
+      flashlightOverlay.style.visibility = "visible"; // Ensure it's always visible
       document.body.appendChild(flashlightOverlay);
 
       // Add mouse move listener to create flashlight effect
       document.addEventListener("mousemove", updateFlashlightPosition);
     }
     flashlightOverlay.style.display = "block";
+    flashlightOverlay.style.visibility = "visible"; // Force visibility
   } else {
     if (flashlightOverlay) {
       flashlightOverlay.style.display = "none";

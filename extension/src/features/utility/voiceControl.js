@@ -3,80 +3,75 @@ let recognition = null;
 let isListening = false;
 let voiceControlEnabled = false;
 let continuousMode = false;
+let restartTimeout = null;
+let lastActivityTime = Date.now();
 
-// Voice command mappings with explicit enable/disable states
+// Voice command mappings - Keyword-based for flexible matching
 // IMPORTANT: These action names MUST match the storageKey values in popup toggles!
 const VOICE_COMMANDS = {
-  // Enable commands - Match exact storageKey from FEATURE_TOGGLES
-  'voice control': { action: 'voiceControlEnabled', enabled: true },
+  // Enable commands - Focus on key words
+  'dyslexia': { action: 'dyslexiaFontEnabled', enabled: true },
+  'contrast': { action: 'highContrastEnabled', enabled: true },
   'hide images': { action: 'hideImagesEnabled', enabled: true },
-  'high contrast': { action: 'highContrastEnabled', enabled: true },
   'highlight links': { action: 'highlightLinksEnabled', enabled: true },
   'disable animations': { action: 'flashContentEnabled', enabled: true },
   'focus line': { action: 'focusLineEnabled', enabled: true },
-  'dyslexia font': { action: 'dyslexiaFontEnabled', enabled: true },
-  'dyslexic font': { action: 'dyslexiaFontEnabled', enabled: true }, // Alternative
-  'letter spacing': { action: 'letterSpacingEnabled', enabled: true },
-  'dimmer overlay': { action: 'dimmerOverlayEnabled', enabled: true },
-  'dimer overlay': { action: 'dimmerOverlayEnabled', enabled: true }, // Common mishearing
-  'dimmer': { action: 'dimmerOverlayEnabled', enabled: true }, // Short version
-  'large cursor': { action: 'largeCursorEnabled', enabled: true },
-  'big cursor': { action: 'largeCursorEnabled', enabled: true }, // Alternative
-  'cursor size': { action: 'cursorSizeEnabled', enabled: true }, // For vanilla popup
+  'spacing': { action: 'letterSpacingEnabled', enabled: true },
+  'dim': { action: 'dimmerOverlayEnabled', enabled: true },
+  'cursor': { action: 'largeCursorEnabled', enabled: true },
   'autocomplete': { action: 'autocompleteEnabled', enabled: true },
-  'increase font': { action: 'increaseFontSizeEnabled', enabled: true },
-  'bigger font': { action: 'increaseFontSizeEnabled', enabled: true }, // Alternative
-  'increase line height': { action: 'increaseLineHeightEnabled', enabled: true },
+  'font size': { action: 'increaseFontSizeEnabled', enabled: true },
+  'line height': { action: 'increaseLineHeightEnabled', enabled: true },
   'limit width': { action: 'limitContentWidthEnabled', enabled: true },
-  'limit content width': { action: 'limitContentWidthEnabled', enabled: true }, // Full version
-  'limit the width': { action: 'limitContentWidthEnabled', enabled: true }, // Natural variation
   'block popups': { action: 'removePopupsEnabled', enabled: true },
-  'reading mode': { action: 'readingModeEnabled', enabled: true },
+  'reading': { action: 'readingModeEnabled', enabled: true },
   'disable sticky': { action: 'disableStickyEnabled', enabled: true },
   'disable hover': { action: 'disableHoverEnabled', enabled: true },
 
-  // Disable commands - Match exact storageKey from FEATURE_TOGGLES
-  'disable voice control': { action: 'voiceControlEnabled', enabled: false },
+  // Disable commands - Use "off", "remove", "normal" keywords
   'show images': { action: 'hideImagesEnabled', enabled: false },
   'normal contrast': { action: 'highContrastEnabled', enabled: false },
+  'off contrast': { action: 'highContrastEnabled', enabled: false },
   'unhighlight links': { action: 'highlightLinksEnabled', enabled: false },
   'enable animations': { action: 'flashContentEnabled', enabled: false },
-  'remove focus line': { action: 'focusLineEnabled', enabled: false },
+  'remove focus': { action: 'focusLineEnabled', enabled: false },
   'normal font': { action: 'dyslexiaFontEnabled', enabled: false },
+  'off dyslexia': { action: 'dyslexiaFontEnabled', enabled: false },
   'normal spacing': { action: 'letterSpacingEnabled', enabled: false },
-  'remove dimmer overlay': { action: 'dimmerOverlayEnabled', enabled: false },
-  'remove dimmer': { action: 'dimmerOverlayEnabled', enabled: false },
-  'turn off dimmer': { action: 'dimmerOverlayEnabled', enabled: false },
+  'off spacing': { action: 'letterSpacingEnabled', enabled: false },
+  'remove dim': { action: 'dimmerOverlayEnabled', enabled: false },
+  'off dim': { action: 'dimmerOverlayEnabled', enabled: false },
   'normal cursor': { action: 'largeCursorEnabled', enabled: false },
-  'small cursor': { action: 'largeCursorEnabled', enabled: false }, // Alternative
-  'default cursor': { action: 'cursorSizeEnabled', enabled: false }, // For vanilla popup
-  'disable autocomplete': { action: 'autocompleteEnabled', enabled: false },
+  'off cursor': { action: 'largeCursorEnabled', enabled: false },
+  'off autocomplete': { action: 'autocompleteEnabled', enabled: false },
   'normal font size': { action: 'increaseFontSizeEnabled', enabled: false },
-  'smaller font': { action: 'increaseFontSizeEnabled', enabled: false }, // Alternative
+  'off font size': { action: 'increaseFontSizeEnabled', enabled: false },
   'normal line height': { action: 'increaseLineHeightEnabled', enabled: false },
+  'off line height': { action: 'increaseLineHeightEnabled', enabled: false },
   'full width': { action: 'limitContentWidthEnabled', enabled: false },
-  'remove width limit': { action: 'limitContentWidthEnabled', enabled: false },
-  'unlimited width': { action: 'limitContentWidthEnabled', enabled: false },
+  'off width': { action: 'limitContentWidthEnabled', enabled: false },
   'allow popups': { action: 'removePopupsEnabled', enabled: false },
-  'normal mode': { action: 'readingModeEnabled', enabled: false },
+  'off popups': { action: 'removePopupsEnabled', enabled: false },
+  'normal reading': { action: 'readingModeEnabled', enabled: false },
+  'off reading': { action: 'readingModeEnabled', enabled: false },
   'enable sticky': { action: 'disableStickyEnabled', enabled: false },
   'enable hover': { action: 'disableHoverEnabled', enabled: false },
 
-  // Navigation commands (no enable/disable state)
+  // Navigation commands
   'scroll down': { action: 'scrollDown' },
   'scroll up': { action: 'scrollUp' },
-  'scroll to top': { action: 'scrollToTop' },
-  'scroll to bottom': { action: 'scrollToBottom' },
+  'scroll top': { action: 'scrollToTop' },
+  'scroll bottom': { action: 'scrollToBottom' },
   'go back': { action: 'goBack' },
   'go forward': { action: 'goForward' },
-  'refresh page': { action: 'refreshPage' },
+  'refresh': { action: 'refreshPage' },
   'click': { action: 'click' },
   'open link': { action: 'openLink' },
 
   // Help commands
   'help': { action: 'showHelp' },
-  'stop listening': { action: 'stopListening' },
-  'start listening': { action: 'startListening' }
+  'stop': { action: 'stopListening' },
+  'start': { action: 'startListening' }
 };
 
 // Initialize speech recognition
@@ -90,13 +85,14 @@ export function initVoiceControl() {
   recognition = new SpeechRecognition();
 
   recognition.continuous = true;
-  recognition.interimResults = false;
+  recognition.interimResults = true; // Show interim results for better feedback
   recognition.lang = 'en-US';
-  recognition.maxAlternatives = 3;
+  recognition.maxAlternatives = 5; // More alternatives for better matching
 
   recognition.onstart = () => {
     isListening = true;
-    showVoiceIndicator('Listening...');
+    lastActivityTime = Date.now();
+    showRecordingButton(true);
     console.log('Voice recognition started');
   };
 
@@ -104,13 +100,20 @@ export function initVoiceControl() {
     isListening = false;
     console.log('🔄 Recognition ended, continuous mode:', continuousMode, 'enabled:', voiceControlEnabled);
 
+    // Clear any existing restart timeout
+    if (restartTimeout) {
+      clearTimeout(restartTimeout);
+      restartTimeout = null;
+    }
+
     if (voiceControlEnabled && continuousMode) {
-      // Restart if continuous mode is enabled with a longer delay to prevent rapid restarts
-      setTimeout(() => {
+      // Always restart immediately to prevent timeout issues
+      restartTimeout = setTimeout(() => {
         if (voiceControlEnabled && !isListening) {
           try {
             console.log('▶️ Restarting recognition...');
             recognition.start();
+            lastActivityTime = Date.now();
           } catch (error) {
             // If already started, ignore the error
             if (error.message && error.message.includes('already started')) {
@@ -119,95 +122,146 @@ export function initVoiceControl() {
             } else {
               console.warn('⚠️ Error restarting recognition:', error.message || error);
               // Try again after a longer delay
-              setTimeout(() => {
+              restartTimeout = setTimeout(() => {
                 if (voiceControlEnabled && !isListening) {
                   try {
                     recognition.start();
+                    lastActivityTime = Date.now();
                   } catch (e) {
                     console.error('Failed to restart recognition:', e);
+                    showRecordingButton(false);
                   }
                 }
               }, 1000);
             }
           }
         }
-      }, 500);
+      }, 300); // Reduced delay for faster restart
     } else {
-      hideVoiceIndicator();
+      showRecordingButton(false);
     }
   };
 
   recognition.onerror = (event) => {
-    // Handle different error types
-    if (event.error === 'no-speech') {
-      console.log('ℹ️ No speech detected (normal), will restart automatically');
-      // Don't show warning, just restart - this is expected behavior
-    } else if (event.error === 'aborted') {
-      console.log('ℹ️ Recognition aborted (normal), will restart automatically');
-      // Normal abort, will restart automatically
-      isListening = false;
-    } else if (event.error === 'audio-capture') {
-      console.log('ℹ️ Audio capture ended (normal), will restart automatically');
-      // Audio capture stopped, will restart
-      isListening = false;
-    } else if (event.error === 'not-allowed') {
-      console.error('❌ Microphone access denied');
-      showVoiceIndicator('Microphone access denied - please allow microphone access', 'error');
-      voiceControlEnabled = false;
-      continuousMode = false;
-      isListening = false;
-      
-      // Update storage to reflect disabled state via background script
-      chrome.runtime.sendMessage({
-        action: 'updateFeatureStorage',
-        featureKey: 'voiceControlEnabled',
-        enabled: false
-      }, (response) => {
-        if (chrome.runtime.lastError) {
-          console.warn('Could not update voice control state:', chrome.runtime.lastError.message);
-        }
-      });
-    } else if (event.error === 'network') {
-      console.error('❌ Network error');
-      showVoiceIndicator('Network error - check your connection', 'error');
-      isListening = false;
-    } else if (event.error === 'service-not-allowed') {
-      console.error('❌ Speech service not allowed');
-      showVoiceIndicator('Speech service not allowed', 'error');
-      voiceControlEnabled = false;
-      continuousMode = false;
-      isListening = false;
-    } else {
-      console.warn('⚠️ Speech recognition error:', event.error);
-      isListening = false;
+    console.log('🔴 Recognition error:', event.error);
+    
+    // Handle different error types with appropriate recovery strategies
+    // IMPORTANT: Keep isListening = true for most errors so UI stays active
+    switch (event.error) {
+      case 'no-speech':
+        // Normal - no speech detected, just continue
+        console.log('ℹ️ No speech detected (normal behavior)');
+        // Keep listening state active - will auto-restart via onend
+        break;
+        
+      case 'aborted':
+        // Recognition was aborted - show feedback but keep listening state
+        console.log('ℹ️ Recognition aborted, restarting...');
+        showCommandFeedback('⚠️ Restarting...', 'warning');
+        // Keep isListening = true so UI doesn't flicker
+        // Will restart via onend if still enabled
+        break;
+        
+      case 'audio-capture':
+        // Audio capture issue - show error but keep listening state
+        console.log('⚠️ Audio capture issue - restarting');
+        showCommandFeedback('❌ Audio not recognized, listening...', 'error');
+        
+        // Keep isListening = true so UI stays active
+        // Will auto-restart via onend handler
+        break;
+        
+      case 'network':
+        // Network error - show error but keep listening state
+        console.error('❌ Network error');
+        showCommandFeedback('❌ Network error, retrying...', 'error');
+        
+        // Keep isListening = true so UI stays active
+        // Will auto-restart via onend handler
+        break;
+        
+      case 'not-allowed':
+      case 'service-not-allowed':
+        // Critical - microphone permission denied (only case where we stop)
+        console.error('❌ Microphone access denied');
+        voiceControlEnabled = false;
+        continuousMode = false;
+        isListening = false;
+        
+        showCommandFeedback('❌ Microphone access denied', 'error');
+        showRecordingButton(false);
+        
+        // Update storage to reflect disabled state
+        chrome.runtime.sendMessage({
+          action: 'updateFeatureStorage',
+          featureKey: 'voiceControlEnabled',
+          enabled: false
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+            console.warn('Could not update voice control state:', chrome.runtime.lastError.message);
+          }
+        });
+        
+        // Notify user
+        speakFeedback('Microphone access denied. Please allow microphone access in browser settings.');
+        break;
+        
+      case 'bad-grammar':
+      case 'language-not-supported':
+        // Configuration error - show error but keep listening state
+        console.error('❌ Configuration error:', event.error);
+        showCommandFeedback('❌ Configuration error, retrying...', 'error');
+        
+        // Keep isListening = true so UI stays active
+        // Will auto-restart via onend handler
+        break;
+        
+      default:
+        // Unknown error - show error but keep listening state
+        console.warn('⚠️ Unknown recognition error:', event.error);
+        showCommandFeedback('❌ Not recognized, listening...', 'warning');
+        
+        // Keep isListening = true so UI stays active
+        // Will auto-restart via onend handler
+        break;
     }
   };
 
   recognition.onresult = (event) => {
     const last = event.results.length - 1;
     const result = event.results[last];
-    
-    // Only process final results to avoid duplicate commands
-    if (!result.isFinal) {
-      return;
-    }
-    
+
+    // Update last activity time
+    lastActivityTime = Date.now();
+
     const transcript = result[0].transcript.toLowerCase().trim();
     const confidence = result[0].confidence;
 
-    console.log('🎤 Voice command:', transcript, 'Confidence:', confidence);
-    
-    // Only process commands with reasonable confidence
-    if (confidence < 0.5) {
-      console.log('⚠️ Low confidence, ignoring command');
-      showVoiceIndicator(`Unclear: "${transcript}"`, 'warning');
+    // Show interim results (what's being recognized in real-time)
+    if (!result.isFinal) {
+      showInterimTranscript(transcript);
       return;
     }
-    
-    showVoiceIndicator(`Heard: "${transcript}"`, 'success');
 
-    // Process command immediately
-    processVoiceCommand(transcript);
+    // Clear interim display
+    hideInterimTranscript();
+
+    console.log('🎤 Voice command:', transcript, 'Confidence:', confidence);
+
+    // Lower confidence threshold for better recognition
+    if (confidence < 0.4) {
+      console.log('⚠️ Low confidence, ignoring command');
+      showCommandFeedback(`❌ Unclear: "${transcript}"`, 'warning');
+      return;
+    }
+
+    // Show what was heard
+    showCommandFeedback(`🎤 "${transcript}"`, 'info');
+
+    // Process command after a brief delay to show the transcript
+    setTimeout(() => {
+      processVoiceCommand(transcript);
+    }, 500);
   };
 
   return true;
@@ -250,10 +304,17 @@ export function stopVoiceRecognition() {
   voiceControlEnabled = false;
   continuousMode = false;
 
+  // Clear any restart timeout
+  if (restartTimeout) {
+    clearTimeout(restartTimeout);
+    restartTimeout = null;
+  }
+
   if (recognition && isListening) {
     recognition.stop();
   }
 
+  showRecordingButton(false);
   hideVoiceIndicator();
 }
 
@@ -267,58 +328,126 @@ export function toggleVoiceControl(enabled) {
   }
 }
 
-// Process voice commands
+// Normalize text for better matching (handle speech-to-text errors)
+function normalizeText(text) {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s]/g, '') // Remove punctuation
+    .replace(/\s+/g, ' ') // Normalize spaces
+    .replace(/dyslexic/g, 'dyslexia') // Common variations
+    .replace(/dislexia/g, 'dyslexia')
+    .replace(/dislexic/g, 'dyslexia')
+    .replace(/dimmer/g, 'dim')
+    .replace(/dimer/g, 'dim')
+    .replace(/popup/g, 'popups')
+    .replace(/image/g, 'images')
+    .replace(/link/g, 'links')
+    .replace(/animation/g, 'animations');
+}
+
+// Extract key words from transcript
+function extractKeywords(transcript) {
+  const normalized = normalizeText(transcript);
+  const words = normalized.split(' ');
+
+  // Common words to ignore
+  const stopWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'];
+
+  return words.filter(word => !stopWords.includes(word) && word.length > 1);
+}
+
+// Check if transcript matches a command (flexible matching)
+function matchesCommand(transcript, command) {
+  const transcriptNorm = normalizeText(transcript);
+  const commandNorm = normalizeText(command);
+
+  // Exact match
+  if (transcriptNorm === commandNorm) {
+    return { match: true, score: 1.0, type: 'exact' };
+  }
+
+  // Contains match
+  if (transcriptNorm.includes(commandNorm) || commandNorm.includes(transcriptNorm)) {
+    return { match: true, score: 0.9, type: 'contains' };
+  }
+
+  // Keyword matching
+  const transcriptKeywords = extractKeywords(transcript);
+  const commandKeywords = extractKeywords(command);
+
+  if (transcriptKeywords.length === 0 || commandKeywords.length === 0) {
+    return { match: false, score: 0, type: 'none' };
+  }
+
+  // Count matching keywords
+  let matchingKeywords = 0;
+  for (const tWord of transcriptKeywords) {
+    for (const cWord of commandKeywords) {
+      if (tWord === cWord) {
+        matchingKeywords += 1;
+      } else if (tWord.includes(cWord) || cWord.includes(tWord)) {
+        matchingKeywords += 0.7;
+      } else if (levenshteinDistance(tWord, cWord) <= 1) {
+        matchingKeywords += 0.5;
+      }
+    }
+  }
+
+  const score = matchingKeywords / Math.max(transcriptKeywords.length, commandKeywords.length);
+
+  if (score >= 0.4) {
+    return { match: true, score, type: 'keywords' };
+  }
+
+  return { match: false, score, type: 'none' };
+}
+
+// Process voice commands (improved matching)
 function processVoiceCommand(transcript) {
   console.log('=== Processing command ===');
-  console.log('Transcript:', transcript);
-  console.log('Length:', transcript.length);
+  console.log('Original transcript:', transcript);
+  console.log('Normalized:', normalizeText(transcript));
+  console.log('Keywords:', extractKeywords(transcript));
 
-  let commandFound = false;
-  let matchedCommand = null;
+  let bestMatch = null;
+  let bestScore = 0;
+  let bestType = 'none';
 
-  // Check for exact matches first (prioritize longer commands)
-  const sortedCommands = Object.entries(VOICE_COMMANDS).sort((a, b) => b[0].length - a[0].length);
+  // Try to match against all commands
+  for (const [command, commandData] of Object.entries(VOICE_COMMANDS)) {
+    const result = matchesCommand(transcript, command);
 
-  console.log('Checking against', sortedCommands.length, 'commands...');
-
-  for (const [command, commandData] of sortedCommands) {
-    // Try exact match
-    if (transcript === command) {
-      console.log('✅ EXACT MATCH:', command);
-      matchedCommand = command;
-      executeCommand(commandData, transcript);
-      commandFound = true;
-      break;
-    }
-    // Try contains match
-    if (transcript.includes(command)) {
-      console.log('✅ CONTAINS MATCH:', command, 'in', transcript);
-      matchedCommand = command;
-      executeCommand(commandData, transcript);
-      commandFound = true;
-      break;
+    if (result.match && result.score > bestScore) {
+      bestScore = result.score;
+      bestMatch = { command, commandData };
+      bestType = result.type;
     }
   }
 
-  // If no command found, try fuzzy matching
-  if (!commandFound) {
-    console.log('No exact match, trying fuzzy matching...');
-    const bestMatch = findBestMatch(transcript);
-    if (bestMatch) {
-      console.log('✅ FUZZY MATCH:', bestMatch.command, 'Score:', bestMatch.score);
-      matchedCommand = bestMatch.command;
-      executeCommand(bestMatch.commandData, transcript);
-      commandFound = true;
-    }
-  }
+  if (bestMatch && bestScore >= 0.4) {
+    console.log('✅ MATCH FOUND:', bestMatch.command);
+    console.log('   Type:', bestType, 'Score:', bestScore.toFixed(2));
 
-  if (!commandFound) {
-    console.log('❌ NO MATCH FOUND');
-    console.log('Available commands:', Object.keys(VOICE_COMMANDS).slice(0, 10).join(', '), '...');
-    showVoiceIndicator('Command not recognized', 'warning');
-    speakFeedback('Command not recognized. Say "help" for available commands.');
+    // Show executing command
+    const action = bestMatch.commandData.action;
+    const enabled = bestMatch.commandData.enabled;
+    const featureName = action.replace('Enabled', '').replace(/([A-Z])/g, ' $1').trim();
+
+    if (enabled !== undefined) {
+      showCommandFeedback(`✅ ${featureName} ${enabled ? 'ON' : 'OFF'}`, 'executing');
+    } else {
+      showCommandFeedback(`✅ ${bestMatch.command}`, 'executing');
+    }
+
+    executeCommand(bestMatch.commandData, transcript);
   } else {
-    console.log('✅ Command executed successfully:', matchedCommand);
+    console.log('❌ NO MATCH FOUND');
+    console.log('Best score was:', bestScore.toFixed(2));
+    console.log('Try saying one of these:');
+    console.log('- "dyslexia" or "high contrast" or "hide images"');
+    showCommandFeedback('❌ Command not recognized', 'warning');
+    speakFeedback('Command not recognized. Try saying dyslexia, contrast, or hide images.');
   }
 }
 
@@ -430,14 +559,14 @@ function executeCommand(commandData, transcript) {
   speakFeedback(`${featureName} ${enabled ? 'enabled' : 'disabled'}`);
 }
 
-// Find best matching command using fuzzy matching
+// Find best matching command using fuzzy matching (more flexible)
 function findBestMatch(transcript) {
   let bestMatch = null;
   let highestScore = 0;
 
   for (const [command, commandData] of Object.entries(VOICE_COMMANDS)) {
     const score = calculateSimilarity(transcript, command);
-    if (score > highestScore && score > 0.6) {
+    if (score > highestScore && score > 0.5) { // Lowered threshold from 0.6 to 0.5
       highestScore = score;
       bestMatch = { command, commandData, score };
     }
@@ -446,21 +575,56 @@ function findBestMatch(transcript) {
   return bestMatch;
 }
 
-// Calculate similarity between two strings
+// Calculate similarity between two strings (improved)
 function calculateSimilarity(str1, str2) {
   const words1 = str1.split(' ');
   const words2 = str2.split(' ');
   let matches = 0;
+  let partialMatches = 0;
 
   for (const word1 of words1) {
     for (const word2 of words2) {
-      if (word1 === word2 || word1.includes(word2) || word2.includes(word1)) {
-        matches++;
+      if (word1 === word2) {
+        matches += 1; // Exact match
+      } else if (word1.includes(word2) || word2.includes(word1)) {
+        partialMatches += 0.7; // Partial match
+      } else if (levenshteinDistance(word1, word2) <= 2) {
+        partialMatches += 0.5; // Similar spelling
       }
     }
   }
 
-  return matches / Math.max(words1.length, words2.length);
+  const totalScore = matches + partialMatches;
+  return totalScore / Math.max(words1.length, words2.length);
+}
+
+// Levenshtein distance for fuzzy string matching
+function levenshteinDistance(str1, str2) {
+  const matrix = [];
+
+  for (let i = 0; i <= str2.length; i++) {
+    matrix[i] = [i];
+  }
+
+  for (let j = 0; j <= str1.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= str2.length; i++) {
+    for (let j = 1; j <= str1.length; j++) {
+      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+
+  return matrix[str2.length][str1.length];
 }
 
 // Click at center of viewport
@@ -488,31 +652,205 @@ function openFirstLink() {
   speakFeedback('No visible links found');
 }
 
-// Show voice indicator
-function showVoiceIndicator(message, type = 'info') {
-  let indicator = document.getElementById('visora-voice-indicator');
+// Show recording button (improved design)
+function showRecordingButton(isRecording) {
+  let container = document.getElementById('visora-mic-container');
 
-  if (!indicator) {
-    indicator = document.createElement('div');
-    indicator.id = 'visora-voice-indicator';
-    indicator.style.cssText = `
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'visora-mic-container';
+    container.style.cssText = `
       position: fixed;
-      top: 20px;
-      right: 20px;
-      padding: 15px 20px;
-      background: rgba(0, 0, 0, 0.9);
-      color: white;
-      border-radius: 8px;
-      font-family: Arial, sans-serif;
-      font-size: 14px;
-      z-index: 999999;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      bottom: 30px;
+      right: 30px;
+      z-index: 999998;
       display: flex;
+      flex-direction: column;
       align-items: center;
       gap: 10px;
-      transition: all 0.3s ease;
     `;
-    document.body.appendChild(indicator);
+
+    // Microphone button
+    const button = document.createElement('div');
+    button.id = 'visora-recording-button';
+    button.style.cssText = `
+      width: 70px;
+      height: 70px;
+      background: linear-gradient(135deg, ${isRecording ? '#ef4444, #dc2626' : '#6b7280, #4b5563'});
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: 4px solid white;
+      position: relative;
+    `;
+
+    button.innerHTML = '🎤';
+    button.title = isRecording ? 'Voice Control Active - Click to stop' : 'Voice Control Inactive - Click to start';
+
+    button.addEventListener('click', () => {
+      if (voiceControlEnabled) {
+        stopVoiceRecognition();
+        speakFeedback('Voice control stopped');
+      } else {
+        startVoiceRecognition(true);
+        speakFeedback('Voice control started');
+      }
+    });
+
+    // Status text
+    const status = document.createElement('div');
+    status.id = 'visora-mic-status';
+    status.style.cssText = `
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-family: 'OpenDyslexic', Arial, sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    `;
+    status.textContent = isRecording ? 'Listening...' : 'Off';
+
+    container.appendChild(button);
+    container.appendChild(status);
+    document.body.appendChild(container);
+
+    // Add styles
+    if (!document.getElementById('visora-mic-styles')) {
+      const style = document.createElement('style');
+      style.id = 'visora-mic-styles';
+      style.textContent = `
+        @font-face {
+          font-family: 'OpenDyslexic';
+          src: url('${chrome.runtime.getURL('assets/OpenDyslexic.otf')}') format('opentype');
+          font-weight: normal;
+          font-style: normal;
+        }
+        @keyframes visora-pulse {
+          0%, 100% { 
+            transform: scale(1); 
+            box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4), 0 0 0 0 rgba(239, 68, 68, 0.7);
+          }
+          50% { 
+            transform: scale(1.05); 
+            box-shadow: 0 8px 32px rgba(239, 68, 68, 0.6), 0 0 0 10px rgba(239, 68, 68, 0);
+          }
+        }
+        @keyframes visora-wave {
+          0%, 100% { transform: scaleY(0.5); }
+          50% { transform: scaleY(1); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }
+
+  const button = document.getElementById('visora-recording-button');
+  const status = document.getElementById('visora-mic-status');
+
+  if (button && status) {
+    // Update button state
+    button.style.background = isRecording
+      ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+      : 'linear-gradient(135deg, #6b7280, #4b5563)';
+    button.title = isRecording ? 'Voice Control Active - Click to stop' : 'Voice Control Inactive - Click to start';
+
+    // Update status
+    status.textContent = isRecording ? 'Listening...' : 'Off';
+    status.style.background = isRecording ? 'rgba(239, 68, 68, 0.9)' : 'rgba(0, 0, 0, 0.8)';
+
+    // Add pulsing animation when recording
+    if (isRecording) {
+      button.style.animation = 'visora-pulse 2s infinite';
+    } else {
+      button.style.animation = 'none';
+    }
+
+    container.style.display = 'flex';
+  }
+}
+
+// Show interim transcript (what's being recognized in real-time)
+function showInterimTranscript(text) {
+  let interim = document.getElementById('visora-interim-transcript');
+
+  if (!interim) {
+    interim = document.createElement('div');
+    interim.id = 'visora-interim-transcript';
+    interim.style.cssText = `
+      position: fixed;
+      bottom: 120px;
+      right: 30px;
+      padding: 12px 20px;
+      background: rgba(59, 130, 246, 0.95);
+      color: white;
+      border-radius: 8px;
+      font-family: 'OpenDyslexic', Arial, sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+      z-index: 999999;
+      box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+      max-width: 350px;
+      min-width: 200px;
+      transition: all 0.2s ease;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+    `;
+    document.body.appendChild(interim);
+  }
+
+  interim.textContent = `🎤 ${text}`;
+  interim.style.opacity = '1';
+  interim.style.transform = 'translateY(0)';
+}
+
+// Hide interim transcript
+function hideInterimTranscript() {
+  const interim = document.getElementById('visora-interim-transcript');
+  if (interim) {
+    interim.style.opacity = '0';
+    interim.style.transform = 'translateY(10px)';
+    setTimeout(() => {
+      if (interim && interim.style.opacity === '0') {
+        interim.remove();
+      }
+    }, 300);
+  }
+}
+
+// Show command feedback (temporary message)
+function showCommandFeedback(message, type = 'info') {
+  let feedback = document.getElementById('visora-command-feedback');
+
+  if (!feedback) {
+    feedback = document.createElement('div');
+    feedback.id = 'visora-command-feedback';
+    feedback.style.cssText = `
+      position: fixed;
+      bottom: 120px;
+      right: 30px;
+      padding: 14px 22px;
+      background: rgba(0, 0, 0, 0.95);
+      color: white;
+      border-radius: 10px;
+      font-family: 'OpenDyslexic', Arial, sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+      z-index: 999999;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+      max-width: 350px;
+      min-width: 200px;
+      transition: all 0.3s ease;
+      opacity: 0;
+      transform: translateY(10px);
+    `;
+    document.body.appendChild(feedback);
   }
 
   // Set color based on type
@@ -520,43 +858,35 @@ function showVoiceIndicator(message, type = 'info') {
     info: '#3b82f6',
     success: '#10b981',
     warning: '#f59e0b',
-    error: '#ef4444'
+    error: '#ef4444',
+    executing: '#8b5cf6'
   };
 
-  indicator.style.borderLeft = `4px solid ${colors[type] || colors.info}`;
+  feedback.style.borderLeft = `5px solid ${colors[type] || colors.info}`;
+  feedback.textContent = message;
+  feedback.style.opacity = '1';
+  feedback.style.transform = 'translateY(0)';
 
-  // Add microphone icon
-  const icon = type === 'info' ? '🎤' : type === 'success' ? '✓' : type === 'warning' ? '⚠' : '✗';
-  indicator.innerHTML = `<span style="font-size: 18px;">${icon}</span><span>${message}</span>`;
-
-  indicator.style.display = 'flex';
-  indicator.style.opacity = '1';
-
-  // Auto-hide after 3 seconds for non-listening states
-  if (type !== 'info') {
-    setTimeout(() => {
-      if (indicator && type !== 'info') {
-        indicator.style.opacity = '0';
-        setTimeout(() => {
-          if (indicator && indicator.style.opacity === '0') {
-            indicator.style.display = 'none';
-          }
-        }, 300);
-      }
-    }, 3000);
-  }
+  // Auto-hide after 3 seconds
+  setTimeout(() => {
+    if (feedback) {
+      feedback.style.opacity = '0';
+      feedback.style.transform = 'translateY(10px)';
+    }
+  }, 3000);
 }
 
-// Hide voice indicator
+// Legacy function for compatibility
+function showVoiceIndicator(message, type = 'info') {
+  showCommandFeedback(message, type);
+}
+
+// Legacy function for compatibility
 function hideVoiceIndicator() {
-  const indicator = document.getElementById('visora-voice-indicator');
-  if (indicator) {
-    indicator.style.opacity = '0';
-    setTimeout(() => {
-      if (indicator) {
-        indicator.remove();
-      }
-    }, 300);
+  const feedback = document.getElementById('visora-command-feedback');
+  if (feedback) {
+    feedback.style.opacity = '0';
+    feedback.style.transform = 'translateY(10px)';
   }
 }
 
