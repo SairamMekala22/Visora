@@ -10,6 +10,7 @@ let watchdogInterval = null; // Watchdog to detect and fix stuck recognition
 let sessionStartTime = null; // Track when current session started
 let forceRestartTimeout = null; // Force restarExlait before browser timeout
 
+
 // Voice command mappings - Keyword-based for flexible matching
 // IMPORTANT: These action names MUST match the storageKey values in popup toggles!
 const VOICE_COMMANDS = {
