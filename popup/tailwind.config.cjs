@@ -66,20 +66,14 @@ module.exports = {
         'accordion-up': {
           from: { height: 'var(--radix-accordion-content-height)' },
           to: { height: '0' }
-        },
-        'ability-spin': {
-          '0%, 80%': { transform: 'rotate(0deg)' },
-          '88%': { transform: 'rotate(360deg)' },
-          '100%': { transform: 'rotate(360deg)' }
         }
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
-        'accordion-up': 'accordion-up 0.2s ease-out',
-        'ability-spin': 'ability-spin 4s ease-in-out infinite'
+        'accordion-up': 'accordion-up 0.2s ease-out'
       },
       fontFamily: {
-        sans: ['Inter var', ...fontFamily.sans]
+        sans: ['OpenDyslexic', 'Inter var', ...fontFamily.sans]
       }
     }
   },

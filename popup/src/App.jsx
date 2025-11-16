@@ -655,8 +655,8 @@ export default function App() {
             {abilityIconSrc ? (
               <img
                 src={abilityIconSrc}
-                alt="Ability icon"
-                className="h-8 w-8 flex-shrink-0 select-none animate-ability-spin"
+                alt="Visora icon"
+                className="h-8 w-8 flex-shrink-0 select-none"
                 draggable={false}
               />
             ) : null}
