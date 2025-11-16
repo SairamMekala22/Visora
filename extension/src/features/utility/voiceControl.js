@@ -5,6 +5,10 @@ let voiceControlEnabled = false;
 let continuousMode = false;
 let restartTimeout = null;
 let lastActivityTime = Date.now();
+let keepAliveInterval = null; // Keep-alive to prevent timeouts
+let watchdogInterval = null; // Watchdog to detect and fix stuck recognition
+let sessionStartTime = null; // Track when current session started
+let forceRestartTimeout = null; // Force restart before browser timeout
 
 // Voice command mappings - Keyword-based for flexible matching
 // IMPORTANT: These action names MUST match the storageKey values in popup toggles!
@@ -84,20 +88,50 @@ export function initVoiceControl() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SpeechRecognition();
 
+  // IMPORTANT: Set continuous to true for longer sessions
   recognition.continuous = true;
   recognition.interimResults = true; // Show interim results for better feedback
   recognition.lang = 'en-US';
   recognition.maxAlternatives = 5; // More alternatives for better matching
 
+  // Chrome has a ~60 second limit, so we'll force restart before that
+
   recognition.onstart = () => {
     isListening = true;
     lastActivityTime = Date.now();
+    sessionStartTime = Date.now();
     showRecordingButton(true);
-    console.log('Voice recognition started');
+    console.log('✅ Voice recognition started');
+
+    // Start keep-alive mechanism to prevent browser timeouts
+    if (keepAliveInterval) {
+      clearInterval(keepAliveInterval);
+    }
+    keepAliveInterval = setInterval(() => {
+      if (voiceControlEnabled && isListening) {
+        lastActivityTime = Date.now();
+        console.log('🔄 Keep-alive ping');
+      }
+    }, 5000); // Ping every 5 seconds
+
+    // Force restart after 50 seconds to prevent Chrome's 60-second timeout
+    // This ensures continuous listening forever
+    if (forceRestartTimeout) {
+      clearTimeout(forceRestartTimeout);
+    }
+    forceRestartTimeout = setTimeout(() => {
+      if (voiceControlEnabled && continuousMode && isListening) {
+        console.log('🔄 Proactive restart (preventing browser timeout)...');
+        try {
+          recognition.stop(); // This will trigger onend which will restart
+        } catch (e) {
+          console.warn('Force restart stop failed:', e.message);
+        }
+      }
+    }, 50000); // Restart every 50 seconds (before Chrome's 60s limit)
   };
 
   recognition.onend = () => {
-    isListening = false;
     console.log('🔄 Recognition ended, continuous mode:', continuousMode, 'enabled:', voiceControlEnabled);
 
     // Clear any existing restart timeout
@@ -106,45 +140,67 @@ export function initVoiceControl() {
       restartTimeout = null;
     }
 
-    if (voiceControlEnabled && continuousMode) {
-      // Always restart immediately to prevent timeout issues
-      restartTimeout = setTimeout(() => {
-        if (voiceControlEnabled && !isListening) {
-          try {
-            console.log('▶️ Restarting recognition...');
-            recognition.start();
-            lastActivityTime = Date.now();
-          } catch (error) {
-            // If already started, ignore the error
-            if (error.message && error.message.includes('already started')) {
-              console.log('✅ Recognition already running');
-              isListening = true;
-            } else {
-              console.warn('⚠️ Error restarting recognition:', error.message || error);
-              // Try again after a longer delay
-              restartTimeout = setTimeout(() => {
-                if (voiceControlEnabled && !isListening) {
-                  try {
-                    recognition.start();
-                    lastActivityTime = Date.now();
-                  } catch (e) {
-                    console.error('Failed to restart recognition:', e);
-                    showRecordingButton(false);
+    // IMPORTANT: Don't set isListening = false here to prevent UI flicker
+    // Only set it to false if we're actually stopping
+    if (!voiceControlEnabled || !continuousMode) {
+      isListening = false;
+      showRecordingButton(false);
+
+      // Clear keep-alive interval
+      if (keepAliveInterval) {
+        clearInterval(keepAliveInterval);
+        keepAliveInterval = null;
+      }
+      return;
+    }
+
+    // Always restart immediately for continuous listening
+    restartTimeout = setTimeout(() => {
+      if (voiceControlEnabled && continuousMode) {
+        try {
+          console.log('▶️ Auto-restarting recognition for continuous listening...');
+          recognition.start();
+          lastActivityTime = Date.now();
+        } catch (error) {
+          // If already started, ignore the error
+          if (error.message && error.message.includes('already started')) {
+            console.log('✅ Recognition already running');
+            isListening = true;
+          } else {
+            console.warn('⚠️ Error restarting recognition:', error.message || error);
+            // Try again with exponential backoff
+            let retryDelay = 500;
+            const retryRestart = () => {
+              if (voiceControlEnabled && continuousMode) {
+                try {
+                  console.log(`🔄 Retry restart (delay: ${retryDelay}ms)...`);
+                  recognition.start();
+                  lastActivityTime = Date.now();
+                } catch (e) {
+                  if (e.message && e.message.includes('already started')) {
+                    console.log('✅ Recognition already running');
+                    isListening = true;
+                  } else if (retryDelay < 8000) {
+                    // Exponential backoff up to 8 seconds
+                    retryDelay *= 2;
+                    restartTimeout = setTimeout(retryRestart, retryDelay);
+                  } else {
+                    console.error('❌ Failed to restart after multiple attempts');
+                    showCommandFeedback('❌ Voice recognition stopped', 'error');
                   }
                 }
-              }, 1000);
-            }
+              }
+            };
+            restartTimeout = setTimeout(retryRestart, retryDelay);
           }
         }
-      }, 300); // Reduced delay for faster restart
-    } else {
-      showRecordingButton(false);
-    }
+      }
+    }, 100); // Very short delay for seamless restart
   };
 
   recognition.onerror = (event) => {
     console.log('🔴 Recognition error:', event.error);
-    
+
     // Handle different error types with appropriate recovery strategies
     // IMPORTANT: Keep isListening = true for most errors so UI stays active
     switch (event.error) {
@@ -153,7 +209,7 @@ export function initVoiceControl() {
         console.log('ℹ️ No speech detected (normal behavior)');
         // Keep listening state active - will auto-restart via onend
         break;
-        
+
       case 'aborted':
         // Recognition was aborted - show feedback but keep listening state
         console.log('ℹ️ Recognition aborted, restarting...');
@@ -161,25 +217,25 @@ export function initVoiceControl() {
         // Keep isListening = true so UI doesn't flicker
         // Will restart via onend if still enabled
         break;
-        
+
       case 'audio-capture':
         // Audio capture issue - show error but keep listening state
         console.log('⚠️ Audio capture issue - restarting');
         showCommandFeedback('❌ Audio not recognized, listening...', 'error');
-        
+
         // Keep isListening = true so UI stays active
         // Will auto-restart via onend handler
         break;
-        
+
       case 'network':
         // Network error - show error but keep listening state
         console.error('❌ Network error');
         showCommandFeedback('❌ Network error, retrying...', 'error');
-        
+
         // Keep isListening = true so UI stays active
         // Will auto-restart via onend handler
         break;
-        
+
       case 'not-allowed':
       case 'service-not-allowed':
         // Critical - microphone permission denied (only case where we stop)
@@ -187,10 +243,10 @@ export function initVoiceControl() {
         voiceControlEnabled = false;
         continuousMode = false;
         isListening = false;
-        
+
         showCommandFeedback('❌ Microphone access denied', 'error');
         showRecordingButton(false);
-        
+
         // Update storage to reflect disabled state
         chrome.runtime.sendMessage({
           action: 'updateFeatureStorage',
@@ -201,26 +257,26 @@ export function initVoiceControl() {
             console.warn('Could not update voice control state:', chrome.runtime.lastError.message);
           }
         });
-        
+
         // Notify user
         speakFeedback('Microphone access denied. Please allow microphone access in browser settings.');
         break;
-        
+
       case 'bad-grammar':
       case 'language-not-supported':
         // Configuration error - show error but keep listening state
         console.error('❌ Configuration error:', event.error);
         showCommandFeedback('❌ Configuration error, retrying...', 'error');
-        
+
         // Keep isListening = true so UI stays active
         // Will auto-restart via onend handler
         break;
-        
+
       default:
         // Unknown error - show error but keep listening state
         console.warn('⚠️ Unknown recognition error:', event.error);
         showCommandFeedback('❌ Not recognized, listening...', 'warning');
-        
+
         // Keep isListening = true so UI stays active
         // Will auto-restart via onend handler
         break;
@@ -284,6 +340,57 @@ export function startVoiceRecognition(continuous = true) {
     return true;
   }
 
+  // Start watchdog to detect stuck recognition
+  if (watchdogInterval) {
+    clearInterval(watchdogInterval);
+  }
+  watchdogInterval = setInterval(() => {
+    if (voiceControlEnabled && continuousMode) {
+      const timeSinceActivity = Date.now() - lastActivityTime;
+      const sessionDuration = sessionStartTime ? Date.now() - sessionStartTime : 0;
+
+      console.log(`🐕 Watchdog check - Activity: ${Math.floor(timeSinceActivity / 1000)}s ago, Session: ${Math.floor(sessionDuration / 1000)}s, Listening: ${isListening}`);
+
+      // If session has been running for more than 55 seconds, force restart
+      if (sessionDuration > 55000 && isListening) {
+        console.warn('⚠️ Watchdog: Session > 55s, forcing restart to prevent timeout...');
+        try {
+          recognition.stop();
+        } catch (e) {
+          console.warn('Watchdog stop failed:', e.message);
+        }
+        return;
+      }
+
+      // If no activity for 20 seconds and we think we're listening, force restart
+      if (timeSinceActivity > 20000 && isListening) {
+        console.warn('⚠️ Watchdog: No activity for 20s, forcing restart...');
+        try {
+          recognition.stop();
+        } catch (e) {
+          console.warn('Watchdog stop failed:', e.message);
+        }
+        return;
+      }
+
+      // If we should be listening but aren't, restart immediately
+      if (!isListening && timeSinceActivity > 3000) {
+        console.warn('⚠️ Watchdog: Should be listening but not, restarting NOW...');
+        try {
+          recognition.start();
+          lastActivityTime = Date.now();
+          sessionStartTime = Date.now();
+        } catch (e) {
+          if (!e.message.includes('already started')) {
+            console.warn('Watchdog start failed:', e.message);
+          } else {
+            isListening = true;
+          }
+        }
+      }
+    }
+  }, 5000); // Check every 5 seconds (more frequent)
+
   try {
     recognition.start();
     return true;
@@ -301,6 +408,7 @@ export function startVoiceRecognition(continuous = true) {
 
 // Stop voice recognition
 export function stopVoiceRecognition() {
+  console.log('🛑 Stopping voice recognition...');
   voiceControlEnabled = false;
   continuousMode = false;
 
@@ -310,10 +418,30 @@ export function stopVoiceRecognition() {
     restartTimeout = null;
   }
 
+  // Clear keep-alive interval
+  if (keepAliveInterval) {
+    clearInterval(keepAliveInterval);
+    keepAliveInterval = null;
+  }
+
+  // Clear watchdog interval
+  if (watchdogInterval) {
+    clearInterval(watchdogInterval);
+    watchdogInterval = null;
+  }
+
+  // Clear force restart timeout
+  if (forceRestartTimeout) {
+    clearTimeout(forceRestartTimeout);
+    forceRestartTimeout = null;
+  }
+
   if (recognition && isListening) {
     recognition.stop();
   }
 
+  isListening = false;
+  sessionStartTime = null;
   showRecordingButton(false);
   hideVoiceIndicator();
 }
