@@ -1,4 +1,37 @@
 // ============================================================
+// FEATURE: Message Handler for Tab ID Requests
+// DESCRIPTION: Helps content scripts get their tab ID reliably
+// ============================================================
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'getTabId') {
+        sendResponse({ tabId: sender.tab?.id });
+        return true;
+    }
+    
+    // Handle storage updates from voice commands in content script
+    if (request.action === 'updateFeatureStorage') {
+        const featureKey = request.featureKey;
+        const enabled = request.enabled;
+        const tabId = sender.tab?.id;
+        
+        if (tabId && featureKey) {
+            chrome.storage.local.get(featureKey, (result) => {
+                const tabState = result[featureKey] || {};
+                tabState[tabId] = enabled;
+                chrome.storage.local.set({ [featureKey]: tabState }, () => {
+                    console.log('✅ Background: Storage updated for', featureKey, enabled);
+                    sendResponse({ success: true });
+                });
+            });
+            return true; // Keep channel open for async response
+        } else {
+            sendResponse({ success: false, error: 'Missing tabId or featureKey' });
+        }
+    }
+});
+
+// ============================================================
 // FEATURE: Context Menu Setup & Installation Handler
 // DEVELOPER: Team Member 1
 // DESCRIPTION: Initializes right-click context menu items for
@@ -20,22 +53,10 @@ chrome.runtime.onInstalled.addListener((details) => {
     });
 
     chrome.contextMenus.create({
-        id: 'define',
-        title: 'Define Selection',
-        contexts: ['selection']
-    });
-
-    chrome.contextMenus.create({
-        id: 'focused-reading',
-        title: 'Apply Focused Reading',
-        contexts: ['selection']
-      });
-
-      chrome.contextMenus.create({
         id: "summarize",
         title: "Summarize Selection",
         contexts: ["selection"],
-      });
+    });
 
       chrome.contextMenus.create({
         id: 'magnify-image',
@@ -91,38 +112,6 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         chrome.scripting.executeScript({
             target: { tabId: tab.id },
             function: startSpeechToText,
-        });
-    } else if (info.menuItemId === 'define' && info.selectionText) {
-        const query = info.selectionText.trim();
-        if (/\s/.test(query)) {
-            // If the selection contains space, it might be more than one word
-            chrome.tabs.sendMessage(tab.id, {
-                action: 'alertUser',
-                message: 'Please select only a single word to define.'
-            });
-        } else {
-            // Proceed with fetching the definition
-            try {
-                const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${query}`);
-                const definitions = await response.json();
-                if (definitions.length > 0 && definitions[0].meanings.length > 0) {
-                    const definition = definitions[0].meanings[0].definitions[0].definition;
-                    chrome.tabs.sendMessage(tab.id, {
-                        action: 'showDefinition',
-                        definition,
-                        word: query
-                    });
-                }
-            } catch (error) {
-                chrome.tabs.sendMessage(tab.id, {
-                    action: 'alertUser',
-                    message: 'An error occurred while fetching the definition.'
-                });
-            }
-        }
-    } else if (info.menuItemId === 'focused-reading') {
-        chrome.tabs.sendMessage(tab.id, {
-          action: 'applyFocusedReading'
         });
     } else if (info.menuItemId === 'summarize') {
         chrome.tabs.sendMessage(tab.id, {
@@ -186,38 +175,48 @@ function startSpeechToText() {
 // Toggle features on tab update
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
     if (changeInfo.status === 'complete') {
-        chrome.storage.local.get(null, function(allStates) {
-            Object.keys(allStates).forEach((stateKey) => {
-                const isEnabled = allStates[stateKey]?.[tabId];
-                if (isEnabled) {
-                    const actions = {
-                        focusLineEnabled: 'focusLineEnabled',
-                        flashContentEnabled: 'flashContentEnabled',
-                        highlightLinksEnabled: 'highlightLinksEnabled',
-                        dyslexiaFontEnabled: 'dyslexiaFontEnabled',
-                        highContrastEnabled: 'highContrastEnabled',
-                        hideImagesEnabled: 'hideImagesEnabled',
-                        letterSpacingEnabled: 'letterSpacingEnabled',
-                        dimmerOverlayEnabled: 'dimmerOverlayEnabled',
-                        largeCursorEnabled: 'largeCursorEnabled',
-                        autocompleteEnabled: 'autocompleteEnabled',
-                        increaseFontSizeEnabled: 'increaseFontSizeEnabled',
-                        increaseLineHeightEnabled: 'increaseLineHeightEnabled',
-                        limitContentWidthEnabled: 'limitContentWidthEnabled',
-                        removePopupsEnabled: 'removePopupsEnabled',
-                        readingModeEnabled: 'readingModeEnabled',
-                        disableStickyEnabled: 'disableStickyEnabled',
-                        disableHoverEnabled: 'disableHoverEnabled',
-                    };
+        // Add a small delay to ensure content script is fully loaded
+        setTimeout(() => {
+            chrome.storage.local.get(null, function(allStates) {
+                const actions = {
+                    voiceControlEnabled: 'voiceControlEnabled',
+                    focusLineEnabled: 'focusLineEnabled',
+                    flashContentEnabled: 'flashContentEnabled',
+                    highlightLinksEnabled: 'highlightLinksEnabled',
+                    dyslexiaFontEnabled: 'dyslexiaFontEnabled',
+                    highContrastEnabled: 'highContrastEnabled',
+                    hideImagesEnabled: 'hideImagesEnabled',
+                    letterSpacingEnabled: 'letterSpacingEnabled',
+                    dimmerOverlayEnabled: 'dimmerOverlayEnabled',
+                    largeCursorEnabled: 'largeCursorEnabled',
+                    cursorSizeEnabled: 'cursorSizeEnabled',
+                    autocompleteEnabled: 'autocompleteEnabled',
+                    increaseFontSizeEnabled: 'increaseFontSizeEnabled',
+                    increaseLineHeightEnabled: 'increaseLineHeightEnabled',
+                    limitContentWidthEnabled: 'limitContentWidthEnabled',
+                    removePopupsEnabled: 'removePopupsEnabled',
+                    readingModeEnabled: 'readingModeEnabled',
+                    disableStickyEnabled: 'disableStickyEnabled',
+                    disableHoverEnabled: 'disableHoverEnabled',
+                };
+                
+                Object.keys(allStates).forEach((stateKey) => {
+                    const isEnabled = allStates[stateKey]?.[tabId];
                     const action = actions[stateKey];
-                    if (action) {
+                    
+                    if (action && isEnabled) {
+                        // Send message with error handling
                         chrome.tabs.sendMessage(tabId, {
                             action,
                             enabled: true
+                        }, (response) => {
+                            if (chrome.runtime.lastError) {
+                                console.log('Feature will be restored by content script initialization:', stateKey);
+                            }
                         });
                     }
-                }
+                });
             });
-        });
+        }, 100);
     }
 });

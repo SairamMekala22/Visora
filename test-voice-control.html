@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Control Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .status {
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            background: #f0f0f0;
+        }
+        .status.listening {
+            background: #e3f2fd;
+            border: 2px solid #2196f3;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            margin: 10px;
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            background: #2196f3;
+            color: white;
+        }
+        button:hover {
+            background: #1976d2;
+        }
+        button.stop {
+            background: #f44336;
+        }
+        button.stop:hover {
+            background: #d32f2f;
+        }
+        #transcript {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff3cd;
+            border-radius: 6px;
+            min-height: 50px;
+        }
+        .command-list {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+        .command-list h3 {
+            margin-top: 0;
+        }
+        .command {
+            padding: 8px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎤 Voice Control Test</h1>
+    
+    <div class="status" id="status">
+        <strong>Status:</strong> <span id="statusText">Not started</span>
+    </div>
+
+    <button id="startBtn" onclick="startVoice()">Start Voice Control</button>
+    <button id="stopBtn" class="stop" onclick="stopVoice()" style="display:none;">Stop Voice Control</button>
+
+    <div id="transcript">
+        <strong>Last heard:</strong> <span id="transcriptText">Nothing yet...</span>
+    </div>
+
+    <div class="command-list">
+        <h3>Try these commands:</h3>
+        <div class="command">• "high contrast"</div>
+        <div class="command">• "hide images"</div>
+        <div class="command">• "reading mode"</div>
+        <div class="command">• "scroll down"</div>
+        <div class="command">• "help"</div>
+    </div>
+
+    <script>
+        let recognition = null;
+        let isListening = false;
+
+        function initVoiceControl() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert('Speech recognition not supported in this browser. Please use Chrome or Edge.');
+                return false;
+            }
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            
+            recognition.continuous = true;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+            recognition.maxAlternatives = 3;
+
+            recognition.onstart = () => {
+                isListening = true;
+                document.getElementById('status').classList.add('listening');
+                document.getElementById('statusText').textContent = 'Listening... 🎤';
+                console.log('Voice recognition started');
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                document.getElementById('status').classList.remove('listening');
+                document.getElementById('statusText').textContent = 'Stopped';
+                console.log('Voice recognition ended');
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                document.getElementById('statusText').textContent = 'Error: ' + event.error;
+                
+                if (event.error === 'not-allowed') {
+                    alert('Microphone access denied. Please allow microphone access and try again.');
+                }
+            };
+
+            recognition.onresult = (event) => {
+                const last = event.results.length - 1;
+                const transcript = event.results[last][0].transcript.toLowerCase().trim();
+                const confidence = event.results[last][0].confidence;
+                
+                console.log('Voice command:', transcript, 'Confidence:', confidence);
+                document.getElementById('transcriptText').textContent = transcript + ' (confidence: ' + (confidence * 100).toFixed(0) + '%)';
+                
+                // Test command recognition
+                if (transcript.includes('high contrast')) {
+                    speak('High contrast enabled');
+                } else if (transcript.includes('hide images')) {
+                    speak('Hide images enabled');
+                } else if (transcript.includes('reading mode')) {
+                    speak('Reading mode enabled');
+                } else if (transcript.includes('scroll down')) {
+                    speak('Scrolling down');
+                    window.scrollBy({ top: 300, behavior: 'smooth' });
+                } else if (transcript.includes('help')) {
+                    speak('Available commands: high contrast, hide images, reading mode, scroll down');
+                } else {
+                    speak('Command not recognized');
+                }
+            };
+
+            return true;
+        }
+
+        function startVoice() {
+            if (!recognition) {
+                if (!initVoiceControl()) {
+                    return;
+                }
+            }
+
+            try {
+                recognition.start();
+                document.getElementById('startBtn').style.display = 'none';
+                document.getElementById('stopBtn').style.display = 'inline-block';
+            } catch (error) {
+                console.error('Failed to start:', error);
+                alert('Failed to start voice recognition: ' + error.message);
+            }
+        }
+
+        function stopVoice() {
+            if (recognition && isListening) {
+                recognition.stop();
+                document.getElementById('startBtn').style.display = 'inline-block';
+                document.getElementById('stopBtn').style.display = 'none';
+            }
+        }
+
+        function speak(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 1.2;
+                utterance.pitch = 1;
+                utterance.volume = 0.8;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // Check browser support on load
+        window.onload = () => {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                document.getElementById('statusText').textContent = '❌ Not supported in this browser';
+                document.getElementById('startBtn').disabled = true;
+            } else {
+                document.getElementById('statusText').textContent = '✅ Ready to start';
+            }
+        };
+    </script>
+</body>
+</html>

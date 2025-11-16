@@ -1,9 +1,4 @@
-// ============================================================
-// FEATURE: Dimmer Overlay with Flashlight Effect
-// DEVELOPER: Team Member 7
-// DESCRIPTION: Creates a darkening overlay with circular spotlight
-//              that follows cursor to reduce visual distractions
-// ============================================================
+
 
 let flashlightOverlay;
 

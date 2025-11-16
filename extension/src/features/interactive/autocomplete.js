@@ -1,30 +1,15 @@
-// ============================================================
-// FEATURE: Intelligent Autocomplete System
-// DEVELOPER: Team Member 8
-// DESCRIPTION: Provides word suggestions for text inputs using
-//              6.86MB dictionary to assist cognitive challenges
-// ============================================================
+
 
 let wordList = [];
 
-// Initialize word list
-export function initializeAutocomplete() {
-  fetch(chrome.runtime.getURL("assets/words.json"))
-    .then((response) => response.json())
-    .then((json) => {
-      wordList = Object.keys(json);
-      console.log(wordList);
-    })
-    .catch((error) => console.error("Error loading word list:", error));
-}
-
-export function enableAutocomplete() {
-  document
-    .querySelectorAll('input[type="text"]:not([autocomplete="on"])')
-    .forEach((inputElement) => {
-      createAutocomplete(inputElement);
-    });
-}
+// Load word list
+fetch(chrome.runtime.getURL("assets/words.json"))
+  .then((response) => response.json())
+  .then((json) => {
+    wordList = Object.keys(json);
+    console.log(wordList);
+  })
+  .catch((error) => console.error("Error loading word list:", error));
 
 function createAutocomplete(inputElement) {
   let autoCompleteDiv = document.createElement("div");
@@ -34,9 +19,7 @@ function createAutocomplete(inputElement) {
   autoCompleteDiv.style.border = "1px solid #d4d4d4";
   autoCompleteDiv.style.backgroundColor = "#fff";
   autoCompleteDiv.style.zIndex = "99";
-  autoCompleteDiv.style.top = `${
-    inputElement.offsetTop + inputElement.offsetHeight
-  }px`;
+  autoCompleteDiv.style.top = `${inputElement.offsetTop + inputElement.offsetHeight}px`;
   autoCompleteDiv.style.left = `${inputElement.offsetLeft}px`;
   autoCompleteDiv.style.width = `${inputElement.offsetWidth}px`;
 
@@ -58,7 +41,6 @@ function createAutocomplete(inputElement) {
         word.substr(0, currentWord.length).toUpperCase() ===
         currentWord.toUpperCase()
     );
-    // Sort the matched words by length
     // Sort the matched words by length, and then alphabetically for words of the same length
     matchedWords.sort((a, b) => {
       if (a.length === b.length) {
@@ -96,4 +78,13 @@ function createAutocomplete(inputElement) {
     }
     e.stopPropagation(); // Stop the click event from closing the div prematurely
   });
+}
+
+// Query all text inputs and attach the autocomplete
+export function enableAutocomplete() {
+  document
+    .querySelectorAll('input[type="text"]:not([autocomplete="on"])')
+    .forEach((inputElement) => {
+      createAutocomplete(inputElement);
+    });
 }

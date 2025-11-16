@@ -1,8 +1,4 @@
-// ============================================================
-// FEATURE: Animation & Motion Control
-// DESCRIPTION: Disables CSS animations, freezes GIFs, and pauses
-//              autoplay videos for users with epilepsy/motion sensitivity
-// ============================================================
+
 
 let flashObserver = null;
 let freezeGifsOnScroll = null;
