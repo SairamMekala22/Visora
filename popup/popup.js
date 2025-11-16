@@ -296,6 +296,12 @@ async function initializePopup() {
 
     // Get current domain
     await getCurrentDomain();
+    
+    // Check authentication status and update UI
+    await checkAuthStatus();
+    
+    // Listen for auth token from app (postMessage)
+    window.addEventListener('message', handleAuthMessage);
 }
 
 // Sync popup toggles with actual page state
@@ -767,6 +773,31 @@ function setupEventListeners() {
     document.getElementById('closeBtn').addEventListener('click', () => window.close());
     document.getElementById('closeFooterBtn').addEventListener('click', () => window.close());
 
+    // Auth buttons - Redirect to Visora app
+    document.getElementById('loginBtn')?.addEventListener('click', () => {
+        // TODO: Replace with your actual Visora app URL
+        const loginUrl = 'http://localhost:3000/login?source=extension'; // Change this to your app's login URL
+        chrome.tabs.create({ url: loginUrl });
+    });
+
+    document.getElementById('signupBtn')?.addEventListener('click', () => {
+        // TODO: Replace with your actual Visora app URL
+        const signupUrl = 'http://localhost:3000/signup?source=extension'; // Change this to your app's signup URL
+        chrome.tabs.create({ url: signupUrl });
+    });
+    
+    // Logout button (if exists)
+    document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+        if (confirm('Are you sure you want to log out?')) {
+            await handleLogout();
+        }
+    });
+    
+    // Sync now button (if exists)
+    document.getElementById('syncNowBtn')?.addEventListener('click', async () => {
+        await triggerManualSync();
+    });
+
     // TTS Sliders
     document.getElementById('rateSlider').addEventListener('input', (e) => {
         const value = parseFloat(e.target.value);
@@ -990,3 +1021,220 @@ function initializeAdvancedControls() {
         }
     }, 100); // Small delay to ensure DOM is ready
 }
+
+// ============================================================
+// AUTHENTICATION & CLOUD SYNC
+// ============================================================
+
+/**
+ * Check if user is authenticated and update UI accordingly
+ */
+async function checkAuthStatus() {
+    return new Promise((resolve) => {
+        chrome.runtime.sendMessage({ action: 'getAuthStatus' }, (response) => {
+            if (chrome.runtime.lastError) {
+                console.warn('Could not get auth status:', chrome.runtime.lastError.message);
+                showLoggedOutState(); // Show logged out state on error
+                resolve();
+                return;
+            }
+            
+            if (response && response.authenticated) {
+                console.log('✅ User is logged in:', response.userEmail);
+                showLoggedInState(response.userEmail);
+            } else {
+                console.log('ℹ️ User is not logged in');
+                showLoggedOutState();
+            }
+            resolve();
+        });
+    });
+}
+
+/**
+ * Show logged-in state in UI
+ */
+function showLoggedInState(userEmail) {
+    const authSection = document.getElementById('authSection') || document.querySelector('.auth-section');
+    if (!authSection) {
+        console.warn('⚠️ Auth section not found in DOM');
+        return;
+    }
+    
+    console.log('🎨 Showing logged-in state for:', userEmail);
+    
+    authSection.innerHTML = `
+        <div class="auth-logged-in">
+            <div class="auth-user-info">
+                <span class="auth-icon">👤</span>
+                <div class="auth-user-details">
+                    <p class="auth-user-email">${userEmail}</p>
+                    <p class="auth-sync-status">✅ Synced with cloud</p>
+                </div>
+            </div>
+            <div class="auth-actions">
+                <button class="btn btn-sm btn-outline" id="syncNowBtn">
+                    🔄 Sync Now
+                </button>
+                <button class="btn btn-sm btn-outline" id="logoutBtn">
+                    🚪 Logout
+                </button>
+            </div>
+        </div>
+    `;
+    
+    // Re-attach event listeners
+    document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+        if (confirm('Are you sure you want to log out?')) {
+            await handleLogout();
+        }
+    });
+    
+    document.getElementById('syncNowBtn')?.addEventListener('click', async () => {
+        await triggerManualSync();
+    });
+}
+
+/**
+ * Show logged-out state in UI
+ */
+function showLoggedOutState() {
+    const authSection = document.getElementById('authSection') || document.querySelector('.auth-section');
+    if (!authSection) {
+        console.warn('⚠️ Auth section not found in DOM');
+        return;
+    }
+    
+    console.log('🎨 Showing logged-out state');
+    
+    authSection.innerHTML = `
+        <p class="auth-description">Connect to Visora App for cloud sync & more features</p>
+        <div class="auth-buttons">
+            <button class="btn btn-auth btn-login" id="loginBtn">
+                <span class="auth-icon">🔐</span>
+                Log In
+            </button>
+            <button class="btn btn-auth btn-signup" id="signupBtn">
+                <span class="auth-icon">✨</span>
+                Sign Up
+            </button>
+        </div>
+    `;
+    
+    // Re-attach event listeners
+    document.getElementById('loginBtn')?.addEventListener('click', () => {
+        const loginUrl = 'http://localhost:3000/login?source=extension';
+        chrome.tabs.create({ url: loginUrl });
+    });
+    
+    document.getElementById('signupBtn')?.addEventListener('click', () => {
+        const signupUrl = 'http://localhost:3000/signup?source=extension';
+        chrome.tabs.create({ url: signupUrl });
+    });
+}
+
+/**
+ * Handle logout
+ */
+async function handleLogout() {
+    return new Promise((resolve) => {
+        chrome.runtime.sendMessage({ action: 'logout' }, (response) => {
+            if (chrome.runtime.lastError) {
+                console.error('Logout failed:', chrome.runtime.lastError.message);
+                alert('Logout failed. Please try again.');
+                resolve();
+                return;
+            }
+            
+            if (response && response.success) {
+                showLoggedOutState();
+                alert('Successfully logged out');
+            } else {
+                alert('Logout failed. Please try again.');
+            }
+            resolve();
+        });
+    });
+}
+
+/**
+ * Trigger manual sync
+ */
+async function triggerManualSync() {
+    const syncBtn = document.getElementById('syncNowBtn');
+    if (syncBtn) {
+        syncBtn.disabled = true;
+        syncBtn.textContent = '⏳ Syncing...';
+    }
+    
+    return new Promise((resolve) => {
+        chrome.runtime.sendMessage({ action: 'syncNow' }, (response) => {
+            if (chrome.runtime.lastError) {
+                console.error('Sync failed:', chrome.runtime.lastError.message);
+                alert('Sync failed. Please try again.');
+            } else if (response && response.success) {
+                // Reload settings from storage
+                loadToggleStates().then(() => {
+                    syncWithPageState();
+                    alert('Settings synced successfully!');
+                });
+            } else {
+                alert('Sync failed. Please try again.');
+            }
+            
+            if (syncBtn) {
+                syncBtn.disabled = false;
+                syncBtn.textContent = '🔄 Sync Now';
+            }
+            resolve();
+        });
+    });
+}
+
+/**
+ * Handle auth message from Visora app (postMessage)
+ */
+function handleAuthMessage(event) {
+    // Verify origin (update with your production URL)
+    const allowedOrigins = [
+        'http://localhost:3000',
+        'https://app.visora.com' // Add your production URL
+    ];
+    
+    if (!allowedOrigins.includes(event.origin)) {
+        return;
+    }
+    
+    // Check if it's an auth message
+    if (event.data && event.data.type === 'VISORA_AUTH') {
+        const { token, userId, userEmail } = event.data;
+        
+        if (token && userId && userEmail) {
+            // Send to background script to handle login
+            chrome.runtime.sendMessage({
+                action: 'login',
+                token: token,
+                userId: userId,
+                userEmail: userEmail
+            }, (response) => {
+                if (response && response.success) {
+                    showLoggedInState(userEmail);
+                    alert('Successfully logged in! Your settings will now sync across devices.');
+                } else {
+                    alert('Login failed. Please try again.');
+                }
+            });
+        }
+    }
+}
+
+// Listen for auth status changes from background script
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'authStatusChanged') {
+        if (message.authenticated) {
+            showLoggedInState(message.userEmail);
+        } else {
+            showLoggedOutState();
+        }
+    }
+});

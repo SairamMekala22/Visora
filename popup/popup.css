@@ -434,6 +434,69 @@ body {
 }
 
 /* ============================================================ */
+/* AUTH SECTION (Login/Signup)                                  */
+/* ============================================================ */
+
+.auth-section {
+    margin-top: 8px;
+}
+
+.auth-description {
+    text-align: center;
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
+
+.auth-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.btn-auth {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.auth-icon {
+    font-size: 16px;
+}
+
+.btn-login {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    border: none;
+}
+
+.btn-login:hover {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.btn-signup {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    color: white;
+    border: none;
+}
+
+.btn-signup:hover {
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+/* ============================================================ */
 /* ADVANCED CONTROLS (Letter Spacing & Cursor Size)            */
 /* ============================================================ */
 
@@ -516,4 +579,52 @@ body {
 .loading {
     opacity: 0.5;
     pointer-events: none;
+}
+
+
+/* ============================================================ */
+/* LOGGED-IN STATE                                              */
+/* ============================================================ */
+
+.auth-logged-in {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.auth-user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+    border-radius: 8px;
+    border: 1px solid #bae6fd;
+}
+
+.auth-user-details {
+    flex: 1;
+}
+
+.auth-user-email {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0c4a6e;
+    margin-bottom: 4px;
+}
+
+.auth-sync-status {
+    font-size: 11px;
+    color: #0369a1;
+}
+
+.auth-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.btn-sm {
+    padding: 8px 12px;
+    font-size: 12px;
 }

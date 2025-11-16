@@ -1,4 +1,11 @@
 // ============================================================
+// FEATURE: Cloud Sync Integration
+// DESCRIPTION: Import and initialize cloud sync module
+// ============================================================
+
+import * as CloudSync from './sync/cloudSync.js';
+
+// ============================================================
 // FEATURE: Message Handler for Tab ID Requests
 // DESCRIPTION: Helps content scripts get their tab ID reliably
 // ============================================================
@@ -29,6 +36,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             sendResponse({ success: false, error: 'Missing tabId or featureKey' });
         }
     }
+    
+    // Cloud sync message handlers are in cloudSync.js
 });
 
 // ============================================================

@@ -92,8 +92,27 @@ document.addEventListener('visoraVoiceCommand', function(event) {
 // ============================================================
 
 // Restore all enabled features when content script loads
-(function initializeFeatures() {
+(async function initializeFeatures() {
   console.log('🚀 Initializing Visora features...');
+  
+  // First check if user is logged in
+  const authData = await new Promise((resolve) => {
+    chrome.storage.sync.get(['authToken', 'userId'], (result) => {
+      resolve(result);
+    });
+  });
+  
+  // If logged in, request settings from cloud
+  if (authData.authToken && authData.userId) {
+    console.log('🔐 User logged in, requesting cloud settings...');
+    chrome.runtime.sendMessage({ action: 'initializeFromCloud' }, (response) => {
+      if (response && response.success) {
+        console.log('✅ Cloud settings will be applied');
+      }
+    });
+    // Wait a bit for cloud settings to be fetched and applied
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
   
   // Use chrome.runtime to get tab ID from background script
   chrome.runtime.sendMessage({ action: 'getTabId' }, (response) => {
