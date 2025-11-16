@@ -9,7 +9,7 @@ export function toggleLetterSpacing(enabled) {
       styleElement.id = styleId;
       document.head.appendChild(styleElement);
     }
-    styleElement.textContent = `* { letter-spacing: 0.12em !important; }`; // Set desired letter-spacing value
+    styleElement.textContent = `* { letter-spacing: 0.12em !important; }`;
   } else {
     if (styleElement) {
       styleElement.remove();

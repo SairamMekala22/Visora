@@ -6,19 +6,19 @@ let imageObserver = null;
 export function toggleImagesVisibility() {
   const images = document.querySelectorAll("img");
   images.forEach((img) => {
-    // Skip Visora's own elements
+
     if (img.id && img.id.startsWith('visora-')) return;
-    // Skip if element is inside a Visora container
+
     if (img.closest('[id^="visora-"]')) return;
     img.style.visibility = hideImages ? "hidden" : "visible";
   });
   const elementsWithBackground = document.querySelectorAll("*");
   elementsWithBackground.forEach((el) => {
-    // Skip Visora's own elements (dimmer overlay, voice control UI, help dialog, etc.)
+
     if (el.id && el.id.startsWith('visora-')) return;
-    // Skip if element is inside a Visora container
+
     if (el.closest('[id^="visora-"]')) return;
-    
+
     const computedStyle = window.getComputedStyle(el);
     if (computedStyle.backgroundImage !== "none" && computedStyle.backgroundImage !== "") {
       el.style.visibility = hideImages ? "hidden" : "visible";
@@ -30,20 +30,19 @@ export function observeNewElements() {
   imageObserver = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
       mutation.addedNodes.forEach((node) => {
-        // Skip Visora's own elements
+
         if (node.id && node.id.startsWith('visora-')) return;
-        
-        // For <img> elements
+
         if (node.tagName === "IMG") {
-          // Skip if inside a Visora container
+
           if (node.closest('[id^="visora-"]')) return;
           node.style.visibility = hideImages ? "hidden" : "visible";
         }
-        // For elements with CSS background images
+
         if (node.nodeType === Node.ELEMENT_NODE) {
-          // Skip if inside a Visora container
+
           if (node.closest('[id^="visora-"]')) return;
-          
+
           const computedStyle = window.getComputedStyle(node);
           if (computedStyle.backgroundImage !== "none") {
             node.style.visibility = hideImages ? "hidden" : "visible";

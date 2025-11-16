@@ -23,7 +23,7 @@ export function toggleReadingMode(enabled) {
       div[class*="menu"]:not([role="main"]) {
         display: none !important;
       }
-      
+
       /* Hide sidebars - more specific */
       aside:not([role="main"]):not([role="article"]),
       div[class*="sidebar"]:not([role="main"]),
@@ -33,7 +33,7 @@ export function toggleReadingMode(enabled) {
       div[class*="widget"] {
         display: none !important;
       }
-      
+
       /* Hide ads and promotional content - more specific */
       div[class*="advertisement"],
       div[class*="ad-container"],
@@ -52,7 +52,7 @@ export function toggleReadingMode(enabled) {
       [data-google-query-id] {
         display: none !important;
       }
-      
+
       /* Make hyperlinks less distracting - use normal text color */
       a:not([role="button"]):not(.button):not(.btn),
       a:link:not([role="button"]):not(.button):not(.btn),
@@ -61,14 +61,14 @@ export function toggleReadingMode(enabled) {
         text-decoration: none !important;
         border-bottom: 1px dotted rgba(0, 0, 0, 0.3) !important;
       }
-      
+
       a:hover:not([role="button"]):not(.button):not(.btn) {
         border-bottom: 1px solid rgba(0, 0, 0, 0.5) !important;
       }
-      
+
       /* Keep main content visible and clean */
-      main, 
-      article, 
+      main,
+      article,
       [role="main"],
       [role="article"],
       div[class*="content"]:not([class*="ad"]),

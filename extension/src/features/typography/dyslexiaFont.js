@@ -10,7 +10,6 @@ export function toggleDyslexiaFont(enableFont) {
       document.head.appendChild(styleElement);
     }
 
-    // Embed the font in the document
     styleElement.textContent = `
         @font-face {
           font-family: 'OpenDyslexic';

@@ -92,24 +92,18 @@
 
             <div class="separator"></div>
 
-            <!-- Per-Website Settings Section -->
+            <!-- Per-Website Auto-Apply Section -->
             <section class="section">
-                <h2 class="section-title">Per-Website Settings</h2>
-                <p class="section-description" id="domainDescription">No website detected</p>
-                <div class="site-buttons">
-                    <button class="btn btn-outline" id="saveForSiteBtn" disabled>Save for This Site</button>
-                    <button class="btn btn-outline" id="clearSiteBtn" disabled>Clear Site Settings</button>
+                <h2 class="section-title">Website Settings</h2>
+                <p class="section-description" id="websiteDescription">Loading...</p>
+                <div class="website-actions">
+                    <button class="btn btn-primary" id="saveForWebsiteBtn" disabled>💾 Save for This Website</button>
+                    <button class="btn btn-outline" id="clearWebsiteBtn" disabled>🗑️ Clear Website Settings</button>
                 </div>
-                <div class="switch-container">
-                    <label class="switch">
-                        <input type="checkbox" id="perSiteToggle" disabled>
-                        <span class="switch-slider"></span>
-                    </label>
-                    <label for="perSiteToggle" class="switch-label">Use per-site settings (when available)</label>
+                <div class="website-status" id="websiteStatus">
+                    <!-- Status will be shown here -->
                 </div>
             </section>
-
-            
 
         <!-- Footer -->
         <div class="footer">

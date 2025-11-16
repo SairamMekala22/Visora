@@ -5,16 +5,13 @@ let voiceControlEnabled = false;
 let continuousMode = false;
 let restartTimeout = null;
 let lastActivityTime = Date.now();
-let keepAliveInterval = null; // Keep-alive to prevent timeouts
-let watchdogInterval = null; // Watchdog to detect and fix stuck recognition
-let sessionStartTime = null; // Track when current session started
-let forceRestartTimeout = null; // Force restarExlait before browser timeout
+let keepAliveInterval = null;
+let watchdogInterval = null;
+let sessionStartTime = null;
+let forceRestartTimeout = null;
 
-
-// Voice command mappings - Keyword-based for flexible matching
-// IMPORTANT: These action names MUST match the storageKey values in popup toggles!
 const VOICE_COMMANDS = {
-  // Enable commands - Focus on key words
+
   'dyslexia': { action: 'dyslexiaFontEnabled', enabled: true },
   'contrast': { action: 'highContrastEnabled', enabled: true },
   'hide images': { action: 'hideImagesEnabled', enabled: true },
@@ -33,7 +30,6 @@ const VOICE_COMMANDS = {
   'disable sticky': { action: 'disableStickyEnabled', enabled: true },
   'disable hover': { action: 'disableHoverEnabled', enabled: true },
 
-  // Disable commands - Use "off", "remove", "normal" keywords
   'show images': { action: 'hideImagesEnabled', enabled: false },
   'normal contrast': { action: 'highContrastEnabled', enabled: false },
   'off contrast': { action: 'highContrastEnabled', enabled: false },
@@ -62,7 +58,6 @@ const VOICE_COMMANDS = {
   'enable sticky': { action: 'disableStickyEnabled', enabled: false },
   'enable hover': { action: 'disableHoverEnabled', enabled: false },
 
-  // Navigation commands
   'scroll down': { action: 'scrollDown' },
   'scroll up': { action: 'scrollUp' },
   'scroll top': { action: 'scrollToTop' },
@@ -73,13 +68,11 @@ const VOICE_COMMANDS = {
   'click': { action: 'click' },
   'open link': { action: 'openLink' },
 
-  // Help commands
   'help': { action: 'showHelp' },
   'stop': { action: 'stopListening' },
   'start': { action: 'startListening' }
 };
 
-// Initialize speech recognition
 export function initVoiceControl() {
   if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
     console.warn('Speech recognition not supported in this browser');
@@ -89,13 +82,10 @@ export function initVoiceControl() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SpeechRecognition();
 
-  // IMPORTANT: Set continuous to true for longer sessions
   recognition.continuous = true;
-  recognition.interimResults = true; // Show interim results for better feedback
+  recognition.interimResults = true;
   recognition.lang = 'en-US';
-  recognition.maxAlternatives = 5; // More alternatives for better matching
-
-  // Chrome has a ~60 second limit, so we'll force restart before that
+  recognition.maxAlternatives = 5;
 
   recognition.onstart = () => {
     isListening = true;
@@ -104,7 +94,6 @@ export function initVoiceControl() {
     showRecordingButton(true);
     console.log('✅ Voice recognition started');
 
-    // Start keep-alive mechanism to prevent browser timeouts
     if (keepAliveInterval) {
       clearInterval(keepAliveInterval);
     }
@@ -113,10 +102,8 @@ export function initVoiceControl() {
         lastActivityTime = Date.now();
         console.log('🔄 Keep-alive ping');
       }
-    }, 5000); // Ping every 5 seconds
+    }, 5000);
 
-    // Force restart after 50 seconds to prevent Chrome's 60-second timeout
-    // This ensures continuous listening forever
     if (forceRestartTimeout) {
       clearTimeout(forceRestartTimeout);
     }
@@ -124,30 +111,26 @@ export function initVoiceControl() {
       if (voiceControlEnabled && continuousMode && isListening) {
         console.log('🔄 Proactive restart (preventing browser timeout)...');
         try {
-          recognition.stop(); // This will trigger onend which will restart
+          recognition.stop();
         } catch (e) {
           console.warn('Force restart stop failed:', e.message);
         }
       }
-    }, 50000); // Restart every 50 seconds (before Chrome's 60s limit)
+    }, 50000);
   };
 
   recognition.onend = () => {
     console.log('🔄 Recognition ended, continuous mode:', continuousMode, 'enabled:', voiceControlEnabled);
 
-    // Clear any existing restart timeout
     if (restartTimeout) {
       clearTimeout(restartTimeout);
       restartTimeout = null;
     }
 
-    // IMPORTANT: Don't set isListening = false here to prevent UI flicker
-    // Only set it to false if we're actually stopping
     if (!voiceControlEnabled || !continuousMode) {
       isListening = false;
       showRecordingButton(false);
 
-      // Clear keep-alive interval
       if (keepAliveInterval) {
         clearInterval(keepAliveInterval);
         keepAliveInterval = null;
@@ -155,7 +138,6 @@ export function initVoiceControl() {
       return;
     }
 
-    // Always restart immediately for continuous listening
     restartTimeout = setTimeout(() => {
       if (voiceControlEnabled && continuousMode) {
         try {
@@ -163,13 +145,13 @@ export function initVoiceControl() {
           recognition.start();
           lastActivityTime = Date.now();
         } catch (error) {
-          // If already started, ignore the error
+
           if (error.message && error.message.includes('already started')) {
             console.log('✅ Recognition already running');
             isListening = true;
           } else {
             console.warn('⚠️ Error restarting recognition:', error.message || error);
-            // Try again with exponential backoff
+
             let retryDelay = 500;
             const retryRestart = () => {
               if (voiceControlEnabled && continuousMode) {
@@ -182,7 +164,7 @@ export function initVoiceControl() {
                     console.log('✅ Recognition already running');
                     isListening = true;
                   } else if (retryDelay < 8000) {
-                    // Exponential backoff up to 8 seconds
+
                     retryDelay *= 2;
                     restartTimeout = setTimeout(retryRestart, retryDelay);
                   } else {
@@ -196,50 +178,43 @@ export function initVoiceControl() {
           }
         }
       }
-    }, 100); // Very short delay for seamless restart
+    }, 100);
   };
 
   recognition.onerror = (event) => {
     console.log('🔴 Recognition error:', event.error);
 
-    // Handle different error types with appropriate recovery strategies
-    // IMPORTANT: Keep isListening = true for most errors so UI stays active
     switch (event.error) {
       case 'no-speech':
-        // Normal - no speech detected, just continue
+
         console.log('ℹ️ No speech detected (normal behavior)');
-        // Keep listening state active - will auto-restart via onend
+
         break;
 
       case 'aborted':
-        // Recognition was aborted - show feedback but keep listening state
+
         console.log('ℹ️ Recognition aborted, restarting...');
         showCommandFeedback('⚠️ Restarting...', 'warning');
-        // Keep isListening = true so UI doesn't flicker
-        // Will restart via onend if still enabled
+
         break;
 
       case 'audio-capture':
-        // Audio capture issue - show error but keep listening state
+
         console.log('⚠️ Audio capture issue - restarting');
         showCommandFeedback('❌ Audio not recognized, listening...', 'error');
 
-        // Keep isListening = true so UI stays active
-        // Will auto-restart via onend handler
         break;
 
       case 'network':
-        // Network error - show error but keep listening state
+
         console.error('❌ Network error');
         showCommandFeedback('❌ Network error, retrying...', 'error');
 
-        // Keep isListening = true so UI stays active
-        // Will auto-restart via onend handler
         break;
 
       case 'not-allowed':
       case 'service-not-allowed':
-        // Critical - microphone permission denied (only case where we stop)
+
         console.error('❌ Microphone access denied');
         voiceControlEnabled = false;
         continuousMode = false;
@@ -248,7 +223,6 @@ export function initVoiceControl() {
         showCommandFeedback('❌ Microphone access denied', 'error');
         showRecordingButton(false);
 
-        // Update storage to reflect disabled state
         chrome.runtime.sendMessage({
           action: 'updateFeatureStorage',
           featureKey: 'voiceControlEnabled',
@@ -259,27 +233,22 @@ export function initVoiceControl() {
           }
         });
 
-        // Notify user
         speakFeedback('Microphone access denied. Please allow microphone access in browser settings.');
         break;
 
       case 'bad-grammar':
       case 'language-not-supported':
-        // Configuration error - show error but keep listening state
+
         console.error('❌ Configuration error:', event.error);
         showCommandFeedback('❌ Configuration error, retrying...', 'error');
 
-        // Keep isListening = true so UI stays active
-        // Will auto-restart via onend handler
         break;
 
       default:
-        // Unknown error - show error but keep listening state
+
         console.warn('⚠️ Unknown recognition error:', event.error);
         showCommandFeedback('❌ Not recognized, listening...', 'warning');
 
-        // Keep isListening = true so UI stays active
-        // Will auto-restart via onend handler
         break;
     }
   };
@@ -288,34 +257,28 @@ export function initVoiceControl() {
     const last = event.results.length - 1;
     const result = event.results[last];
 
-    // Update last activity time
     lastActivityTime = Date.now();
 
     const transcript = result[0].transcript.toLowerCase().trim();
     const confidence = result[0].confidence;
 
-    // Show interim results (what's being recognized in real-time)
     if (!result.isFinal) {
       showInterimTranscript(transcript);
       return;
     }
 
-    // Clear interim display
     hideInterimTranscript();
 
     console.log('🎤 Voice command:', transcript, 'Confidence:', confidence);
 
-    // Lower confidence threshold for better recognition
     if (confidence < 0.4) {
       console.log('⚠️ Low confidence, ignoring command');
       showCommandFeedback(`❌ Unclear: "${transcript}"`, 'warning');
       return;
     }
 
-    // Show what was heard
     showCommandFeedback(`🎤 "${transcript}"`, 'info');
 
-    // Process command after a brief delay to show the transcript
     setTimeout(() => {
       processVoiceCommand(transcript);
     }, 500);
@@ -324,7 +287,6 @@ export function initVoiceControl() {
   return true;
 }
 
-// Start voice recognition
 export function startVoiceRecognition(continuous = true) {
   if (!recognition) {
     if (!initVoiceControl()) {
@@ -335,13 +297,11 @@ export function startVoiceRecognition(continuous = true) {
   voiceControlEnabled = true;
   continuousMode = continuous;
 
-  // Don't try to start if already listening
   if (isListening) {
     console.log('✅ Voice recognition already active');
     return true;
   }
 
-  // Start watchdog to detect stuck recognition
   if (watchdogInterval) {
     clearInterval(watchdogInterval);
   }
@@ -352,7 +312,6 @@ export function startVoiceRecognition(continuous = true) {
 
       console.log(`🐕 Watchdog check - Activity: ${Math.floor(timeSinceActivity / 1000)}s ago, Session: ${Math.floor(sessionDuration / 1000)}s, Listening: ${isListening}`);
 
-      // If session has been running for more than 55 seconds, force restart
       if (sessionDuration > 55000 && isListening) {
         console.warn('⚠️ Watchdog: Session > 55s, forcing restart to prevent timeout...');
         try {
@@ -363,7 +322,6 @@ export function startVoiceRecognition(continuous = true) {
         return;
       }
 
-      // If no activity for 20 seconds and we think we're listening, force restart
       if (timeSinceActivity > 20000 && isListening) {
         console.warn('⚠️ Watchdog: No activity for 20s, forcing restart...');
         try {
@@ -374,7 +332,6 @@ export function startVoiceRecognition(continuous = true) {
         return;
       }
 
-      // If we should be listening but aren't, restart immediately
       if (!isListening && timeSinceActivity > 3000) {
         console.warn('⚠️ Watchdog: Should be listening but not, restarting NOW...');
         try {
@@ -390,13 +347,13 @@ export function startVoiceRecognition(continuous = true) {
         }
       }
     }
-  }, 5000); // Check every 5 seconds (more frequent)
+  }, 5000);
 
   try {
     recognition.start();
     return true;
   } catch (error) {
-    // If already started, that's fine
+
     if (error.message && error.message.includes('already started')) {
       console.log('✅ Voice recognition already active');
       isListening = true;
@@ -407,31 +364,26 @@ export function startVoiceRecognition(continuous = true) {
   }
 }
 
-// Stop voice recognition
 export function stopVoiceRecognition() {
   console.log('🛑 Stopping voice recognition...');
   voiceControlEnabled = false;
   continuousMode = false;
 
-  // Clear any restart timeout
   if (restartTimeout) {
     clearTimeout(restartTimeout);
     restartTimeout = null;
   }
 
-  // Clear keep-alive interval
   if (keepAliveInterval) {
     clearInterval(keepAliveInterval);
     keepAliveInterval = null;
   }
 
-  // Clear watchdog interval
   if (watchdogInterval) {
     clearInterval(watchdogInterval);
     watchdogInterval = null;
   }
 
-  // Clear force restart timeout
   if (forceRestartTimeout) {
     clearTimeout(forceRestartTimeout);
     forceRestartTimeout = null;
@@ -447,7 +399,6 @@ export function stopVoiceRecognition() {
   hideVoiceIndicator();
 }
 
-// Toggle voice control
 export function toggleVoiceControl(enabled) {
   if (enabled) {
     return startVoiceRecognition(true);
@@ -457,14 +408,13 @@ export function toggleVoiceControl(enabled) {
   }
 }
 
-// Normalize text for better matching (handle speech-to-text errors)
 function normalizeText(text) {
   return text
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s]/g, '') // Remove punctuation
-    .replace(/\s+/g, ' ') // Normalize spaces
-    .replace(/dyslexic/g, 'dyslexia') // Common variations
+    .replace(/[^\w\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/dyslexic/g, 'dyslexia')
     .replace(/dislexia/g, 'dyslexia')
     .replace(/dislexic/g, 'dyslexia')
     .replace(/dimmer/g, 'dim')
@@ -475,33 +425,27 @@ function normalizeText(text) {
     .replace(/animation/g, 'animations');
 }
 
-// Extract key words from transcript
 function extractKeywords(transcript) {
   const normalized = normalizeText(transcript);
   const words = normalized.split(' ');
 
-  // Common words to ignore
   const stopWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'];
 
   return words.filter(word => !stopWords.includes(word) && word.length > 1);
 }
 
-// Check if transcript matches a command (flexible matching)
 function matchesCommand(transcript, command) {
   const transcriptNorm = normalizeText(transcript);
   const commandNorm = normalizeText(command);
 
-  // Exact match
   if (transcriptNorm === commandNorm) {
     return { match: true, score: 1.0, type: 'exact' };
   }
 
-  // Contains match
   if (transcriptNorm.includes(commandNorm) || commandNorm.includes(transcriptNorm)) {
     return { match: true, score: 0.9, type: 'contains' };
   }
 
-  // Keyword matching
   const transcriptKeywords = extractKeywords(transcript);
   const commandKeywords = extractKeywords(command);
 
@@ -509,7 +453,6 @@ function matchesCommand(transcript, command) {
     return { match: false, score: 0, type: 'none' };
   }
 
-  // Count matching keywords
   let matchingKeywords = 0;
   for (const tWord of transcriptKeywords) {
     for (const cWord of commandKeywords) {
@@ -532,7 +475,6 @@ function matchesCommand(transcript, command) {
   return { match: false, score, type: 'none' };
 }
 
-// Process voice commands (improved matching)
 function processVoiceCommand(transcript) {
   console.log('=== Processing command ===');
   console.log('Original transcript:', transcript);
@@ -543,7 +485,6 @@ function processVoiceCommand(transcript) {
   let bestScore = 0;
   let bestType = 'none';
 
-  // Try to match against all commands
   for (const [command, commandData] of Object.entries(VOICE_COMMANDS)) {
     const result = matchesCommand(transcript, command);
 
@@ -558,7 +499,6 @@ function processVoiceCommand(transcript) {
     console.log('✅ MATCH FOUND:', bestMatch.command);
     console.log('   Type:', bestType, 'Score:', bestScore.toFixed(2));
 
-    // Show executing command
     const action = bestMatch.commandData.action;
     const enabled = bestMatch.commandData.enabled;
     const featureName = action.replace('Enabled', '').replace(/([A-Z])/g, ' $1').trim();
@@ -580,11 +520,9 @@ function processVoiceCommand(transcript) {
   }
 }
 
-// Execute command
 function executeCommand(commandData, transcript) {
   const action = commandData.action;
 
-  // Handle special commands
   if (action === 'scrollDown') {
     window.scrollBy({ top: 300, behavior: 'smooth' });
     speakFeedback('Scrolling down');
@@ -654,15 +592,12 @@ function executeCommand(commandData, transcript) {
     return;
   }
 
-  // Handle feature toggles - use explicit enabled state from command data
   const enabled = commandData.enabled !== undefined ? commandData.enabled : true;
 
-  // Trigger feature directly via custom event
   const featureName = action.replace('Enabled', '').replace(/([A-Z])/g, ' $1').trim();
 
   console.log('Dispatching event:', action, 'enabled:', enabled);
 
-  // Dispatch custom event immediately - content script will handle it
   const event = new CustomEvent('visoraVoiceCommand', {
     detail: {
       action: action,
@@ -671,8 +606,6 @@ function executeCommand(commandData, transcript) {
   });
   document.dispatchEvent(event);
 
-  // Update storage via background script to sync with popup
-  // Send message to background script to update storage
   chrome.runtime.sendMessage({
     action: 'updateFeatureStorage',
     featureKey: action,
@@ -688,14 +621,13 @@ function executeCommand(commandData, transcript) {
   speakFeedback(`${featureName} ${enabled ? 'enabled' : 'disabled'}`);
 }
 
-// Find best matching command using fuzzy matching (more flexible)
 function findBestMatch(transcript) {
   let bestMatch = null;
   let highestScore = 0;
 
   for (const [command, commandData] of Object.entries(VOICE_COMMANDS)) {
     const score = calculateSimilarity(transcript, command);
-    if (score > highestScore && score > 0.5) { // Lowered threshold from 0.6 to 0.5
+    if (score > highestScore && score > 0.5) {
       highestScore = score;
       bestMatch = { command, commandData, score };
     }
@@ -704,7 +636,6 @@ function findBestMatch(transcript) {
   return bestMatch;
 }
 
-// Calculate similarity between two strings (improved)
 function calculateSimilarity(str1, str2) {
   const words1 = str1.split(' ');
   const words2 = str2.split(' ');
@@ -714,11 +645,11 @@ function calculateSimilarity(str1, str2) {
   for (const word1 of words1) {
     for (const word2 of words2) {
       if (word1 === word2) {
-        matches += 1; // Exact match
+        matches += 1;
       } else if (word1.includes(word2) || word2.includes(word1)) {
-        partialMatches += 0.7; // Partial match
+        partialMatches += 0.7;
       } else if (levenshteinDistance(word1, word2) <= 2) {
-        partialMatches += 0.5; // Similar spelling
+        partialMatches += 0.5;
       }
     }
   }
@@ -727,7 +658,6 @@ function calculateSimilarity(str1, str2) {
   return totalScore / Math.max(words1.length, words2.length);
 }
 
-// Levenshtein distance for fuzzy string matching
 function levenshteinDistance(str1, str2) {
   const matrix = [];
 
@@ -756,7 +686,6 @@ function levenshteinDistance(str1, str2) {
   return matrix[str2.length][str1.length];
 }
 
-// Click at center of viewport
 function clickAtCenter() {
   const x = window.innerWidth / 2;
   const y = window.innerHeight / 2;
@@ -767,7 +696,6 @@ function clickAtCenter() {
   }
 }
 
-// Open first visible link
 function openFirstLink() {
   const links = document.querySelectorAll('a[href]');
   for (const link of links) {
@@ -781,7 +709,6 @@ function openFirstLink() {
   speakFeedback('No visible links found');
 }
 
-// Show recording button (improved design)
 function showRecordingButton(isRecording) {
   let container = document.getElementById('visora-mic-container');
 
@@ -799,7 +726,6 @@ function showRecordingButton(isRecording) {
       gap: 10px;
     `;
 
-    // Microphone button
     const button = document.createElement('div');
     button.id = 'visora-recording-button';
     button.style.cssText = `
@@ -831,7 +757,6 @@ function showRecordingButton(isRecording) {
       }
     });
 
-    // Status text
     const status = document.createElement('div');
     status.id = 'visora-mic-status';
     status.style.cssText = `
@@ -851,7 +776,6 @@ function showRecordingButton(isRecording) {
     container.appendChild(status);
     document.body.appendChild(container);
 
-    // Add styles
     if (!document.getElementById('visora-mic-styles')) {
       const style = document.createElement('style');
       style.id = 'visora-mic-styles';
@@ -863,12 +787,12 @@ function showRecordingButton(isRecording) {
           font-style: normal;
         }
         @keyframes visora-pulse {
-          0%, 100% { 
-            transform: scale(1); 
+          0%, 100% {
+            transform: scale(1);
             box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4), 0 0 0 0 rgba(239, 68, 68, 0.7);
           }
-          50% { 
-            transform: scale(1.05); 
+          50% {
+            transform: scale(1.05);
             box-shadow: 0 8px 32px rgba(239, 68, 68, 0.6), 0 0 0 10px rgba(239, 68, 68, 0);
           }
         }
@@ -885,17 +809,15 @@ function showRecordingButton(isRecording) {
   const status = document.getElementById('visora-mic-status');
 
   if (button && status) {
-    // Update button state
+
     button.style.background = isRecording
       ? 'linear-gradient(135deg, #ef4444, #dc2626)'
       : 'linear-gradient(135deg, #6b7280, #4b5563)';
     button.title = isRecording ? 'Voice Control Active - Click to stop' : 'Voice Control Inactive - Click to start';
 
-    // Update status
     status.textContent = isRecording ? 'Listening...' : 'Off';
     status.style.background = isRecording ? 'rgba(239, 68, 68, 0.9)' : 'rgba(0, 0, 0, 0.8)';
 
-    // Add pulsing animation when recording
     if (isRecording) {
       button.style.animation = 'visora-pulse 2s infinite';
     } else {
@@ -906,7 +828,6 @@ function showRecordingButton(isRecording) {
   }
 }
 
-// Show interim transcript (what's being recognized in real-time)
 function showInterimTranscript(text) {
   let interim = document.getElementById('visora-interim-transcript');
 
@@ -939,7 +860,6 @@ function showInterimTranscript(text) {
   interim.style.transform = 'translateY(0)';
 }
 
-// Hide interim transcript
 function hideInterimTranscript() {
   const interim = document.getElementById('visora-interim-transcript');
   if (interim) {
@@ -953,7 +873,6 @@ function hideInterimTranscript() {
   }
 }
 
-// Show command feedback (temporary message)
 function showCommandFeedback(message, type = 'info') {
   let feedback = document.getElementById('visora-command-feedback');
 
@@ -982,7 +901,6 @@ function showCommandFeedback(message, type = 'info') {
     document.body.appendChild(feedback);
   }
 
-  // Set color based on type
   const colors = {
     info: '#3b82f6',
     success: '#10b981',
@@ -996,7 +914,6 @@ function showCommandFeedback(message, type = 'info') {
   feedback.style.opacity = '1';
   feedback.style.transform = 'translateY(0)';
 
-  // Auto-hide after 3 seconds
   setTimeout(() => {
     if (feedback) {
       feedback.style.opacity = '0';
@@ -1005,12 +922,10 @@ function showCommandFeedback(message, type = 'info') {
   }, 3000);
 }
 
-// Legacy function for compatibility
 function showVoiceIndicator(message, type = 'info') {
   showCommandFeedback(message, type);
 }
 
-// Legacy function for compatibility
 function hideVoiceIndicator() {
   const feedback = document.getElementById('visora-command-feedback');
   if (feedback) {
@@ -1019,10 +934,9 @@ function hideVoiceIndicator() {
   }
 }
 
-// Speak feedback using text-to-speech
 function speakFeedback(text) {
   if ('speechSynthesis' in window) {
-    // Cancel any ongoing speech
+
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
@@ -1034,7 +948,6 @@ function speakFeedback(text) {
   }
 }
 
-// Show help dialog with available commands
 function showHelpDialog() {
   const helpDialog = document.createElement('div');
   helpDialog.id = 'visora-voice-help';
@@ -1055,10 +968,8 @@ function showHelpDialog() {
     font-family: Arial, sans-serif;
   `;
 
-  // Organize commands by category
   const allCommands = Object.keys(VOICE_COMMANDS);
 
-  // Separate enable and disable commands
   const enableCommands = allCommands.filter(cmd => {
     const data = VOICE_COMMANDS[cmd];
     return data.enabled === true;
@@ -1081,35 +992,35 @@ function showHelpDialog() {
 
   helpDialog.innerHTML = `
     <h2 style="margin-top: 0; color: #3b82f6;">🎤 Voice Commands</h2>
-    
+
     <div style="margin-bottom: 20px;">
       <h3 style="color: #10b981; margin-bottom: 10px;">✅ Enable Features</h3>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
         ${enableCommands.map(cmd => `<div style="padding: 6px 10px; background: #f0fdf4; border-radius: 4px; border-left: 3px solid #10b981; font-size: 13px;">• "${cmd}"</div>`).join('')}
       </div>
     </div>
-    
+
     <div style="margin-bottom: 20px;">
       <h3 style="color: #ef4444; margin-bottom: 10px;">❌ Disable Features</h3>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
         ${disableCommands.map(cmd => `<div style="padding: 6px 10px; background: #fef2f2; border-radius: 4px; border-left: 3px solid #ef4444; font-size: 13px;">• "${cmd}"</div>`).join('')}
       </div>
     </div>
-    
+
     <div style="margin-bottom: 20px;">
       <h3 style="color: #3b82f6; margin-bottom: 10px;">🧭 Navigation</h3>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
         ${navigationCommands.map(cmd => `<div style="padding: 6px 10px; background: #eff6ff; border-radius: 4px; border-left: 3px solid #3b82f6; font-size: 13px;">• "${cmd}"</div>`).join('')}
       </div>
     </div>
-    
+
     <div style="margin-bottom: 20px;">
       <h3 style="color: #8b5cf6; margin-bottom: 10px;">⚙️ Control</h3>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
         ${controlCommands.map(cmd => `<div style="padding: 6px 10px; background: #faf5ff; border-radius: 4px; border-left: 3px solid #8b5cf6; font-size: 13px;">• "${cmd}"</div>`).join('')}
       </div>
     </div>
-    
+
     <button id="close-help" style="
       padding: 12px 20px;
       background: #3b82f6;
@@ -1132,7 +1043,6 @@ function showHelpDialog() {
   speakFeedback('Showing available voice commands');
 }
 
-// Get voice control status
 export function getVoiceControlStatus() {
   return {
     enabled: voiceControlEnabled,

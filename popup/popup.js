@@ -1,13 +1,4 @@
-// ============================================================
-// Visora EXTENSION - VANILLA JAVASCRIPT POPUP
-// DEVELOPER: Team Member 4 (Frontend Lead)
-// DESCRIPTION: Pure JavaScript implementation for popup UI
-//              No React, no frameworks - just vanilla JS
-// ============================================================
 
-// ============================================================
-// FEATURE CONFIGURATION DATA
-// ============================================================
 
 const FEATURE_TOGGLES = [
     {
@@ -148,19 +139,11 @@ const PRESETS = {
     },
 };
 
-// ============================================================
-// STATE MANAGEMENT
-// ============================================================
-
 let currentTabId = null;
 let toggleStates = {};
 let ttsSettings = { rate: 1, pitch: 1, volume: 1, voice: "" };
 let currentDomain = "";
 let activePreset = null;
-
-// ============================================================
-// HELPER FUNCTION: Safe Message Sending
-// ============================================================
 
 function sendMessageToTab(tabId, message, callback) {
     if (!tabId) {
@@ -175,7 +158,6 @@ function sendMessageToTab(tabId, message, callback) {
             return;
         }
 
-        // Check if tab is ready and not a restricted page
         if (tab && tab.status === 'complete' &&
             !tab.url.startsWith('chrome://') &&
             !tab.url.startsWith('chrome-extension://') &&
@@ -184,7 +166,7 @@ function sendMessageToTab(tabId, message, callback) {
 
             chrome.tabs.sendMessage(tabId, message, (response) => {
                 if (chrome.runtime.lastError) {
-                    // Content script not ready - feature will apply on page reload
+
                     console.log('Content script not ready. Feature saved and will apply on page reload.');
                     if (callback) callback(false);
                 } else {
@@ -198,20 +180,15 @@ function sendMessageToTab(tabId, message, callback) {
     });
 }
 
-// ============================================================
-// INITIALIZATION
-// ============================================================
-
 document.addEventListener('DOMContentLoaded', () => {
     initializePopup();
 });
 
-// Listen for storage changes from voice commands
 chrome.storage.onChanged.addListener((changes, namespace) => {
     if (namespace === 'local' && currentTabId) {
-        // Update toggles when storage changes (from voice commands)
+
         for (const [key, { oldValue, newValue }] of Object.entries(changes)) {
-            // Check if this is a feature toggle
+
             const toggle = FEATURE_TOGGLES.find(t => t.storageKey === key);
             if (toggle && newValue && newValue[currentTabId] !== undefined) {
                 const checkbox = document.getElementById(toggle.id);
@@ -219,8 +196,7 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
                     checkbox.checked = newValue[currentTabId];
                     toggleStates[toggle.storageKey] = newValue[currentTabId];
                     console.log('🔄 Toggle updated from voice command:', toggle.id, newValue[currentTabId]);
-                    
-                    // Show/hide slider controls if applicable
+
                     const toggleItem = checkbox.closest('.toggle-item');
                     const sliderControl = toggleItem?.querySelector('.toggle-slider-control');
                     if (sliderControl) {
@@ -233,16 +209,14 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
                 }
             }
         }
-        
-        // Re-detect active preset after changes
+
         detectActivePreset();
     }
 });
 
-// Listen for tab changes to sync state
 chrome.tabs.onActivated.addListener((activeInfo) => {
     currentTabId = activeInfo.tabId;
-    // Reload popup state when switching tabs
+
     setTimeout(() => {
         loadToggleStates().then(() => {
             syncWithPageState();
@@ -250,10 +224,9 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
     }, 100);
 });
 
-// Listen for page updates to sync state
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (tabId === currentTabId && changeInfo.status === 'complete') {
-        // Sync when page finishes loading
+
         setTimeout(() => {
             syncWithPageState();
         }, 500);
@@ -261,44 +234,32 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 });
 
 async function initializePopup() {
-    // Get current tab
+
     await getCurrentTab();
 
-    // Load TTS voices
     loadVoices();
 
-    // Load TTS settings
     loadTtsSettings();
 
-    // Generate toggle switches
     generateToggles();
 
-    // Load toggle states
     await loadToggleStates();
 
-    // Sync with actual page state
     await syncWithPageState();
 
-    // Initialize advanced controls
     initializeAdvancedControls();
 
-    // Detect active preset
     detectActivePreset();
 
-    // Setup event listeners
     setupEventListeners();
 
-    // Get current domain
     await getCurrentDomain();
-    
-    // Check authentication status and update UI
+
     await checkAuthStatus();
-    
-    // Listen for auth token from app (postMessage)
+
     window.addEventListener('message', handleAuthMessage);
 }
 
-// Sync popup toggles with actual page state
 async function syncWithPageState() {
     if (!currentTabId) return;
 
@@ -315,8 +276,7 @@ async function syncWithPageState() {
 
                 if (response && response.states) {
                     console.log('Syncing with page state:', response.states);
-                    
-                    // Update each toggle based on actual page state
+
                     FEATURE_TOGGLES.forEach((toggle) => {
                         const actualState = response.states[toggle.storageKey];
                         if (actualState !== undefined) {
@@ -333,10 +293,6 @@ async function syncWithPageState() {
         );
     });
 }
-
-// ============================================================
-// TAB & DOMAIN DETECTION
-// ============================================================
 
 async function getCurrentTab() {
     return new Promise((resolve) => {
@@ -359,12 +315,10 @@ async function getCurrentDomain() {
                     document.getElementById('domainDescription').textContent =
                         `Save settings for ${currentDomain}`;
 
-                    // Enable domain-specific buttons
                     document.getElementById('saveForSiteBtn').disabled = false;
                     document.getElementById('clearSiteBtn').disabled = false;
                     document.getElementById('perSiteToggle').disabled = false;
 
-                    // Check if site settings exist
                     checkSiteSettings();
                 } catch (e) {
                     currentDomain = "";
@@ -385,10 +339,6 @@ function checkSiteSettings() {
         }
     });
 }
-
-// ============================================================
-// TTS VOICE MANAGEMENT
-// ============================================================
 
 function loadVoices() {
     chrome.tts.getVoices((voices) => {
@@ -414,7 +364,6 @@ function loadTtsSettings() {
         if (result.ttsSettings) {
             ttsSettings = result.ttsSettings;
 
-            // Update UI
             document.getElementById('rateSlider').value = ttsSettings.rate;
             document.getElementById('rateValue').textContent = `${ttsSettings.rate.toFixed(1)}×`;
 
@@ -443,10 +392,6 @@ function saveTtsSettings() {
     });
 }
 
-// ============================================================
-// 🎯 TOGGLE SWITCHES GENERATION
-// ============================================================
-
 function generateToggles() {
     const container = document.getElementById('togglesContainer');
 
@@ -467,7 +412,6 @@ function generateToggles() {
 
         container.appendChild(toggleItem);
 
-        // Add slider control if applicable
         if (toggle.id === 'letter-spacing') {
             const sliderControl = createSliderControl(
                 'letterSpacingSlider',
@@ -513,11 +457,10 @@ function generateToggles() {
             toggleItem.appendChild(cursorControl);
         }
 
-        // Add event listener
         const checkbox = toggleItem.querySelector('input');
         checkbox.addEventListener('change', (e) => {
             handleToggleChange(toggle.storageKey, e.target.checked);
-            // Show/hide slider control
+
             const sliderControl = toggleItem.querySelector('.toggle-slider-control');
             if (sliderControl) {
                 if (e.target.checked) {
@@ -530,7 +473,6 @@ function generateToggles() {
     });
 }
 
-// Helper function to create slider controls
 function createSliderControl(sliderId, valueId, label, defaultValue, description, attrs) {
     const sliderDiv = document.createElement('div');
     sliderDiv.className = 'toggle-slider-control';
@@ -540,11 +482,11 @@ function createSliderControl(sliderId, valueId, label, defaultValue, description
             <span>${label}</span>
             <span id="${valueId}">${defaultValue}</span>
         </div>
-        <input type="range" id="${sliderId}" 
-               min="${attrs.min}" 
-               max="${attrs.max}" 
-               step="${attrs.step}" 
-               value="${attrs.value}" 
+        <input type="range" id="${sliderId}"
+               min="${attrs.min}"
+               max="${attrs.max}"
+               step="${attrs.step}"
+               value="${attrs.value}"
                class="slider">
         <p class="control-description">${description}</p>
     `;
@@ -552,7 +494,6 @@ function createSliderControl(sliderId, valueId, label, defaultValue, description
     return sliderDiv;
 }
 
-// Helper function to create cursor size control
 function createCursorSizeControl() {
     const cursorDiv = document.createElement('div');
     cursorDiv.className = 'toggle-slider-control';
@@ -571,10 +512,6 @@ function createCursorSizeControl() {
     return cursorDiv;
 }
 
-// ============================================================
-// TOGGLE STATE MANAGEMENT
-// ============================================================
-
 async function loadToggleStates() {
     if (!currentTabId) return;
 
@@ -588,7 +525,6 @@ async function loadToggleStates() {
 
                 toggleStates[toggle.storageKey] = enabled;
 
-                // Update UI
                 const checkbox = document.getElementById(toggle.id);
                 if (checkbox) {
                     checkbox.checked = enabled;
@@ -603,27 +539,20 @@ async function loadToggleStates() {
 function handleToggleChange(storageKey, enabled) {
     if (!currentTabId) return;
 
-    // Update local state
     toggleStates[storageKey] = enabled;
 
-    // Save to storage
     chrome.storage.local.get(storageKey, (result) => {
         const tabState = result[storageKey] || {};
         tabState[currentTabId] = enabled;
 
         chrome.storage.local.set({ [storageKey]: tabState }, () => {
-            // Send message to content script using helper function
+
             sendMessageToTab(currentTabId, { action: storageKey, enabled });
         });
     });
 
-    // Re-detect active preset
     detectActivePreset();
 }
-
-// ============================================================
-// PRESET SYSTEM
-// ============================================================
 
 function detectActivePreset() {
     activePreset = null;
@@ -631,7 +560,6 @@ function detectActivePreset() {
     for (const [presetKey, preset] of Object.entries(PRESETS)) {
         let matches = true;
 
-        // Check if all preset settings match current state
         for (const [key, value] of Object.entries(preset.settings)) {
             if (toggleStates[key] !== value) {
                 matches = false;
@@ -639,7 +567,6 @@ function detectActivePreset() {
             }
         }
 
-        // Check if non-preset settings are disabled
         if (matches) {
             for (const toggle of FEATURE_TOGGLES) {
                 if (!(toggle.storageKey in preset.settings) && toggleStates[toggle.storageKey]) {
@@ -655,7 +582,6 @@ function detectActivePreset() {
         }
     }
 
-    // Update preset button styles
     updatePresetButtons();
 }
 
@@ -663,7 +589,6 @@ function updatePresetButtons() {
     document.querySelectorAll('.preset-btn').forEach((btn) => {
         const presetKey = btn.dataset.preset;
 
-        // Check if preset exists
         if (!PRESETS[presetKey]) {
             console.warn(`Preset "${presetKey}" not found`);
             return;
@@ -688,46 +613,35 @@ function applyPreset(presetKey) {
         return;
     }
 
-    // Set active preset
     activePreset = presetKey;
 
-    // Build new toggle states (all off except preset settings)
     const newStates = {};
     FEATURE_TOGGLES.forEach((toggle) => {
         newStates[toggle.storageKey] = preset.settings[toggle.storageKey] || false;
     });
 
-    // Update local state
     toggleStates = newStates;
 
-    // Update all checkboxes
     FEATURE_TOGGLES.forEach((toggle) => {
         const checkbox = document.getElementById(toggle.id);
         if (checkbox) {
             checkbox.checked = newStates[toggle.storageKey];
         }
 
-        // Save to storage
         chrome.storage.local.get(toggle.storageKey, (result) => {
             const tabState = result[toggle.storageKey] || {};
             tabState[currentTabId] = newStates[toggle.storageKey];
             chrome.storage.local.set({ [toggle.storageKey]: tabState });
         });
 
-        // Send message to content script using helper function
         sendMessageToTab(
             currentTabId,
             { action: toggle.storageKey, enabled: newStates[toggle.storageKey] }
         );
     });
 
-    // Update button styles
     updatePresetButtons();
 }
-
-// ============================================================
-// PER-SITE SETTINGS
-// ============================================================
 
 function saveForThisSite() {
     if (!currentDomain) return;
@@ -758,41 +672,33 @@ function clearSiteSettings() {
     });
 }
 
-// ============================================================
-// EVENT LISTENERS
-// ============================================================
-
 function setupEventListeners() {
-    // Close buttons
+
     document.getElementById('closeBtn').addEventListener('click', () => window.close());
     document.getElementById('closeFooterBtn').addEventListener('click', () => window.close());
 
-    // Auth buttons - Redirect to Visora app
     document.getElementById('loginBtn')?.addEventListener('click', () => {
-        // TODO: Replace with your actual Visora app URL
-        const loginUrl = 'http://localhost:3000/login?source=extension'; // Change this to your app's login URL
+
+        const loginUrl = 'http://localhost:3000/login?source=extension';
         chrome.tabs.create({ url: loginUrl });
     });
 
     document.getElementById('signupBtn')?.addEventListener('click', () => {
-        // TODO: Replace with your actual Visora app URL
-        const signupUrl = 'http://localhost:3000/signup?source=extension'; // Change this to your app's signup URL
+
+        const signupUrl = 'http://localhost:3000/signup?source=extension';
         chrome.tabs.create({ url: signupUrl });
     });
-    
-    // Logout button (if exists)
+
     document.getElementById('logoutBtn')?.addEventListener('click', async () => {
         if (confirm('Are you sure you want to log out?')) {
             await handleLogout();
         }
     });
-    
-    // Sync now button (if exists)
+
     document.getElementById('syncNowBtn')?.addEventListener('click', async () => {
         await triggerManualSync();
     });
 
-    // TTS Sliders
     document.getElementById('rateSlider').addEventListener('input', (e) => {
         const value = parseFloat(e.target.value);
         ttsSettings.rate = value;
@@ -815,24 +721,17 @@ function setupEventListeners() {
         ttsSettings.voice = e.target.value;
     });
 
-    // Save TTS button
     document.getElementById('saveTtsBtn').addEventListener('click', saveTtsSettings);
 
-    // Preset buttons
     document.querySelectorAll('.preset-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
             applyPreset(btn.dataset.preset);
         });
     });
 
-    // Per-site buttons
     document.getElementById('saveForSiteBtn').addEventListener('click', saveForThisSite);
     document.getElementById('clearSiteBtn').addEventListener('click', clearSiteSettings);
 }
-
-// ============================================================
-// UTILITY FUNCTIONS
-// ============================================================
 
 function buildToggleDefaults() {
     const defaults = {};
@@ -842,12 +741,8 @@ function buildToggleDefaults() {
     return defaults;
 }
 
-// ============================================================
-// ADVANCED CONTROLS (Letter Spacing, Font Size, Line Height, Content Width, Cursor Size)
-// ============================================================
-
 function initializeAdvancedControls() {
-    // Wait for DOM to be ready
+
     setTimeout(() => {
         const letterSpacingSlider = document.getElementById('letterSpacingSlider');
         const letterSpacingValue = document.getElementById('letterSpacingValue');
@@ -859,14 +754,12 @@ function initializeAdvancedControls() {
         const contentWidthValue = document.getElementById('contentWidthValue');
         const cursorSizeSelect = document.getElementById('cursorSizeSelect');
 
-        // Letter Spacing
         if (letterSpacingSlider) {
             chrome.storage.local.get(['letterSpacing', 'letterSpacingEnabled'], (result) => {
                 const savedValue = result.letterSpacing || 0;
                 letterSpacingSlider.value = savedValue;
                 letterSpacingValue.textContent = savedValue.toFixed(2) + 'em';
 
-                // Show slider if toggle is enabled
                 const sliderControl = letterSpacingSlider.closest('.toggle-slider-control');
                 if (result.letterSpacingEnabled && result.letterSpacingEnabled[currentTabId]) {
                     sliderControl.classList.add('visible');
@@ -891,7 +784,6 @@ function initializeAdvancedControls() {
             });
         }
 
-        // Font Size
         if (fontSizeSlider) {
             chrome.storage.local.get(['fontSize', 'increaseFontSizeEnabled'], (result) => {
                 const savedValue = result.fontSize || 100;
@@ -922,7 +814,6 @@ function initializeAdvancedControls() {
             });
         }
 
-        // Line Height
         if (lineHeightSlider) {
             chrome.storage.local.get(['lineHeight', 'increaseLineHeightEnabled'], (result) => {
                 const savedValue = result.lineHeight || 1.5;
@@ -953,7 +844,6 @@ function initializeAdvancedControls() {
             });
         }
 
-        // Content Width
         if (contentWidthSlider) {
             chrome.storage.local.get(['contentWidth', 'limitContentWidthEnabled'], (result) => {
                 const savedValue = result.contentWidth || 1400;
@@ -984,13 +874,11 @@ function initializeAdvancedControls() {
             });
         }
 
-        // Cursor Size
         if (cursorSizeSelect) {
             chrome.storage.local.get(['cursorSize', 'cursorSizeEnabled'], (result) => {
                 const savedSize = result.cursorSize || 'default';
                 cursorSizeSelect.value = savedSize;
 
-                // Show dropdown if toggle is enabled
                 const cursorControl = cursorSizeSelect.closest('.toggle-slider-control');
                 if (cursorControl && result.cursorSizeEnabled && result.cursorSizeEnabled[currentTabId]) {
                     cursorControl.classList.add('visible');
@@ -1013,26 +901,19 @@ function initializeAdvancedControls() {
                 }
             });
         }
-    }, 100); // Small delay to ensure DOM is ready
+    }, 100);
 }
 
-// ============================================================
-// AUTHENTICATION & CLOUD SYNC
-// ============================================================
-
-/**
- * Check if user is authenticated and update UI accordingly
- */
 async function checkAuthStatus() {
     return new Promise((resolve) => {
         chrome.runtime.sendMessage({ action: 'getAuthStatus' }, (response) => {
             if (chrome.runtime.lastError) {
                 console.warn('Could not get auth status:', chrome.runtime.lastError.message);
-                showLoggedOutState(); // Show logged out state on error
+                showLoggedOutState();
                 resolve();
                 return;
             }
-            
+
             if (response && response.authenticated) {
                 console.log('✅ User is logged in:', response.userEmail);
                 showLoggedInState(response.userEmail);
@@ -1045,18 +926,15 @@ async function checkAuthStatus() {
     });
 }
 
-/**
- * Show logged-in state in UI
- */
 function showLoggedInState(userEmail) {
     const authSection = document.getElementById('authSection') || document.querySelector('.auth-section');
     if (!authSection) {
         console.warn('⚠️ Auth section not found in DOM');
         return;
     }
-    
+
     console.log('🎨 Showing logged-in state for:', userEmail);
-    
+
     authSection.innerHTML = `
         <div class="auth-logged-in">
             <div class="auth-user-info">
@@ -1076,31 +954,27 @@ function showLoggedInState(userEmail) {
             </div>
         </div>
     `;
-    
-    // Re-attach event listeners
+
     document.getElementById('logoutBtn')?.addEventListener('click', async () => {
         if (confirm('Are you sure you want to log out?')) {
             await handleLogout();
         }
     });
-    
+
     document.getElementById('syncNowBtn')?.addEventListener('click', async () => {
         await triggerManualSync();
     });
 }
 
-/**
- * Show logged-out state in UI
- */
 function showLoggedOutState() {
     const authSection = document.getElementById('authSection') || document.querySelector('.auth-section');
     if (!authSection) {
         console.warn('⚠️ Auth section not found in DOM');
         return;
     }
-    
+
     console.log('🎨 Showing logged-out state');
-    
+
     authSection.innerHTML = `
         <p class="auth-description">Connect to Visora App for cloud sync & more features</p>
         <div class="auth-buttons">
@@ -1114,22 +988,18 @@ function showLoggedOutState() {
             </button>
         </div>
     `;
-    
-    // Re-attach event listeners
+
     document.getElementById('loginBtn')?.addEventListener('click', () => {
         const loginUrl = 'http://localhost:3000/login?source=extension';
         chrome.tabs.create({ url: loginUrl });
     });
-    
+
     document.getElementById('signupBtn')?.addEventListener('click', () => {
         const signupUrl = 'http://localhost:3000/signup?source=extension';
         chrome.tabs.create({ url: signupUrl });
     });
 }
 
-/**
- * Handle logout
- */
 async function handleLogout() {
     return new Promise((resolve) => {
         chrome.runtime.sendMessage({ action: 'logout' }, (response) => {
@@ -1139,7 +1009,7 @@ async function handleLogout() {
                 resolve();
                 return;
             }
-            
+
             if (response && response.success) {
                 showLoggedOutState();
                 alert('Successfully logged out');
@@ -1151,23 +1021,20 @@ async function handleLogout() {
     });
 }
 
-/**
- * Trigger manual sync
- */
 async function triggerManualSync() {
     const syncBtn = document.getElementById('syncNowBtn');
     if (syncBtn) {
         syncBtn.disabled = true;
         syncBtn.textContent = '⏳ Syncing...';
     }
-    
+
     return new Promise((resolve) => {
         chrome.runtime.sendMessage({ action: 'syncNow' }, (response) => {
             if (chrome.runtime.lastError) {
                 console.error('Sync failed:', chrome.runtime.lastError.message);
                 alert('Sync failed. Please try again.');
             } else if (response && response.success) {
-                // Reload settings from storage
+
                 loadToggleStates().then(() => {
                     syncWithPageState();
                     alert('Settings synced successfully!');
@@ -1175,7 +1042,7 @@ async function triggerManualSync() {
             } else {
                 alert('Sync failed. Please try again.');
             }
-            
+
             if (syncBtn) {
                 syncBtn.disabled = false;
                 syncBtn.textContent = '🔄 Sync Now';
@@ -1185,26 +1052,22 @@ async function triggerManualSync() {
     });
 }
 
-/**
- * Handle auth message from Visora app (postMessage)
- */
 function handleAuthMessage(event) {
-    // Verify origin (update with your production URL)
+
     const allowedOrigins = [
         'http://localhost:3000',
-        'https://app.visora.com' // Add your production URL
+        'https://app.visora.com'
     ];
-    
+
     if (!allowedOrigins.includes(event.origin)) {
         return;
     }
-    
-    // Check if it's an auth message
+
     if (event.data && event.data.type === 'VISORA_AUTH') {
         const { token, userId, userEmail } = event.data;
-        
+
         if (token && userId && userEmail) {
-            // Send to background script to handle login
+
             chrome.runtime.sendMessage({
                 action: 'login',
                 token: token,
@@ -1222,7 +1085,6 @@ function handleAuthMessage(event) {
     }
 }
 
-// Listen for auth status changes from background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'authStatusChanged') {
         if (message.authenticated) {
@@ -1232,3 +1094,133 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
     }
 });
+
+let currentWebsite = '';
+
+async function getCurrentWebsite() {
+    return new Promise((resolve) => {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0] && tabs[0].url) {
+                try {
+                    const url = new URL(tabs[0].url);
+                    currentWebsite = url.hostname;
+                    resolve(currentWebsite);
+                } catch (e) {
+                    currentWebsite = '';
+                    resolve('');
+                }
+            } else {
+                currentWebsite = '';
+                resolve('');
+            }
+        });
+    });
+}
+
+async function checkWebsiteSettings() {
+    if (!currentWebsite) {
+        document.getElementById('websiteDescription').textContent = 'No website detected';
+        document.getElementById('saveForWebsiteBtn').disabled = true;
+        document.getElementById('clearWebsiteBtn').disabled = true;
+        return;
+    }
+
+    document.getElementById('websiteDescription').textContent = `Current website: ${currentWebsite}`;
+    document.getElementById('saveForWebsiteBtn').disabled = false;
+
+    const result = await chrome.storage.local.get('websiteSettings');
+    const websiteSettings = result.websiteSettings || {};
+
+    const statusDiv = document.getElementById('websiteStatus');
+
+    if (websiteSettings[currentWebsite]) {
+        const settings = websiteSettings[currentWebsite];
+        const enabledCount = Object.values(settings).filter(v => v === true).length;
+
+        statusDiv.className = 'website-status active success';
+        statusDiv.textContent = `✅ Auto-apply enabled: ${enabledCount} features will automatically apply when you visit this website`;
+
+        document.getElementById('clearWebsiteBtn').disabled = false;
+    } else {
+        statusDiv.className = 'website-status active warning';
+        statusDiv.textContent = '⚠️ No saved settings for this website. Save your current settings to auto-apply them next time.';
+
+        document.getElementById('clearWebsiteBtn').disabled = true;
+    }
+}
+
+async function saveForWebsite() {
+    if (!currentWebsite) {
+        alert('No website detected!');
+        return;
+    }
+
+    const currentSettings = {};
+    FEATURE_TOGGLES.forEach(toggle => {
+        const checkbox = document.getElementById(toggle.id);
+        if (checkbox) {
+            currentSettings[toggle.storageKey] = checkbox.checked;
+        }
+    });
+
+    const result = await chrome.storage.local.get('websiteSettings');
+    const websiteSettings = result.websiteSettings || {};
+
+    websiteSettings[currentWebsite] = currentSettings;
+
+    await chrome.storage.local.set({ websiteSettings });
+
+    await checkWebsiteSettings();
+
+    alert(`Settings saved for ${currentWebsite}!\n\nThese settings will automatically apply when you visit this website.`);
+}
+
+async function clearWebsiteSettings() {
+    if (!currentWebsite) {
+        alert('No website detected!');
+        return;
+    }
+
+    if (!confirm(`Clear saved settings for ${currentWebsite}?`)) {
+        return;
+    }
+
+    const result = await chrome.storage.local.get('websiteSettings');
+    const websiteSettings = result.websiteSettings || {};
+
+    delete websiteSettings[currentWebsite];
+
+    await chrome.storage.local.set({ websiteSettings });
+
+    await checkWebsiteSettings();
+
+    alert(`Settings cleared for ${currentWebsite}`);
+}
+
+async function autoApplyWebsiteSettings() {
+    if (!currentWebsite) return;
+
+    const result = await chrome.storage.local.get('websiteSettings');
+    const websiteSettings = result.websiteSettings || {};
+
+    if (websiteSettings[currentWebsite]) {
+        console.log(`🌐 Auto-applying settings for ${currentWebsite}`);
+
+        const settings = websiteSettings[currentWebsite];
+
+        for (const [storageKey, enabled] of Object.entries(settings)) {
+            const toggle = FEATURE_TOGGLES.find(t => t.storageKey === storageKey);
+            if (toggle) {
+                const checkbox = document.getElementById(toggle.id);
+                if (checkbox && checkbox.checked !== enabled) {
+                    checkbox.checked = enabled;
+
+                    handleToggleChange(storageKey, enabled);
+                }
+            }
+        }
+    }
+}
+
+document.getElementById('saveForWebsiteBtn')?.addEventListener('click', saveForWebsite);
+document.getElementById('clearWebsiteBtn')?.addEventListener('click', clearWebsiteSettings);

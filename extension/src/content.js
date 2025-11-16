@@ -1,17 +1,11 @@
-// ============================================================
-// VISORA EXTENSION - CONTENT SCRIPT (MODULAR VERSION)
-// DESCRIPTION: Main content script that imports and coordinates
-//              all feature modules
-// ============================================================
 
-// Import configuration
+
 import './features/config.js';
 
-// Import all feature modules
 import { applyHighContrast } from './features/visual/highContrast.js';
-import { 
-  toggleImagesVisibility, 
-  observeNewElements, 
+import {
+  toggleImagesVisibility,
+  observeNewElements,
   setHideImages,
   disconnectImageObserver,
   getImageObserver
@@ -20,8 +14,8 @@ import { toggleLinkHighlight } from './features/visual/highlightLinks.js';
 import { flashContent } from './features/visual/flashContent.js';
 import { focusLineEnabled } from './features/visual/focusLine.js';
 import { toggleDyslexiaFont } from './features/typography/dyslexiaFont.js';
-import { 
-  toggleLetterSpacing, 
+import {
+  toggleLetterSpacing,
   applyCustomLetterSpacing,
   toggleFontSize,
   applyCustomFontSize,
@@ -31,30 +25,25 @@ import {
   applyCustomContentWidth
 } from './features/typography/lineHeightControl.js';
 import { toggleDimmerOverlay } from './features/interactive/dimmerOverlay.js';
-import { 
-  toggleLargeCursor, 
-  toggleCursorSize, 
-  applyCustomCursorSize 
+import {
+  toggleLargeCursor,
+  toggleCursorSize,
+  applyCustomCursorSize
 } from './features/interactive/cursorControl.js';
 import { enableAutocomplete } from './features/interactive/autocomplete.js';
 import { togglePopupBlocker } from './features/utility/popupBlocker.js';
 import { toggleReadingMode } from './features/layout/readingMode.js';
 import { toggleStickyElements } from './features/layout/disableSticky.js';
 import { toggleHoverEffects } from './features/layout/disableHover.js';
-import { 
-  toggleVoiceControl, 
-  getVoiceControlStatus 
+import {
+  toggleVoiceControl,
+  getVoiceControlStatus
 } from './features/utility/voiceControl.js';
-
-// ============================================================
-// STATE VARIABLES
-// ============================================================
 
 let toggleImgListener;
 let hideImages = false;
 let imageObserver;
 
-// Track active feature states - MUST match storageKey in popup toggles!
 let activeFeatureStates = {
   voiceControlEnabled: false,
   hideImagesEnabled: false,
@@ -77,32 +66,21 @@ let activeFeatureStates = {
   disableHoverEnabled: false
 };
 
-// ============================================================
-// VOICE COMMAND EVENT LISTENER
-// ============================================================
-
 document.addEventListener('visoraVoiceCommand', function(event) {
   const { action, enabled } = event.detail;
   console.log('📢 Voice command received:', action, enabled);
   handleFeatureToggle(action, enabled);
 });
 
-// ============================================================
-// INITIALIZATION - RESTORE FEATURES ON PAGE LOAD
-// ============================================================
-
-// Restore all enabled features when content script loads
 (async function initializeFeatures() {
   console.log('🚀 Initializing Visora features...');
-  
-  // First check if user is logged in
+
   const authData = await new Promise((resolve) => {
     chrome.storage.sync.get(['authToken', 'userId'], (result) => {
       resolve(result);
     });
   });
-  
-  // If logged in, request settings from cloud
+
   if (authData.authToken && authData.userId) {
     console.log('🔐 User logged in, requesting cloud settings...');
     chrome.runtime.sendMessage({ action: 'initializeFromCloud' }, (response) => {
@@ -110,45 +88,44 @@ document.addEventListener('visoraVoiceCommand', function(event) {
         console.log('✅ Cloud settings will be applied');
       }
     });
-    // Wait a bit for cloud settings to be fetched and applied
+
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
-  
-  // Use chrome.runtime to get tab ID from background script
+
   chrome.runtime.sendMessage({ action: 'getTabId' }, (response) => {
     if (chrome.runtime.lastError) {
       console.warn('⚠️ Could not get tab ID:', chrome.runtime.lastError.message);
       return;
     }
-    
+
     const tabId = response?.tabId;
     if (!tabId) {
       console.warn('⚠️ Could not determine tab ID');
       return;
     }
-    
+
     const storageKeys = Object.keys(activeFeatureStates);
-    
+
     chrome.storage.local.get(storageKeys, (result) => {
       if (chrome.runtime.lastError) {
         console.warn('⚠️ Could not load storage:', chrome.runtime.lastError.message);
         return;
       }
-      
+
       console.log('📦 Loaded storage for tab', tabId);
-      
+
       let restoredCount = 0;
       storageKeys.forEach((key) => {
         const tabState = result[key] || {};
         const enabled = tabState[tabId] || false;
-        
+
         if (enabled) {
           console.log('✅ Restoring feature:', key);
           handleFeatureToggle(key, true);
           restoredCount++;
         }
       });
-      
+
       if (restoredCount > 0) {
         console.log(`✅ Restored ${restoredCount} features`);
       } else {
@@ -158,12 +135,8 @@ document.addEventListener('visoraVoiceCommand', function(event) {
   });
 })();
 
-// ============================================================
-// FEATURE HANDLER FUNCTION
-// ============================================================
-
 function handleFeatureToggle(action, enabled) {
-  // Update state tracking
+
   if (activeFeatureStates.hasOwnProperty(action)) {
     activeFeatureStates[action] = enabled;
   }
@@ -238,35 +211,26 @@ function handleFeatureToggle(action, enabled) {
   }
 }
 
-// ============================================================
-// FEATURE: Message Router & Feature Dispatcher
-// DEVELOPER: Team Member 3
-// DESCRIPTION: Central message handler that routes requests
-//              from popup/background to appropriate feature functions
-// ============================================================
-
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   try {
-    // Handle getting current feature states
+
     if (request.action === "getFeatureStates") {
       sendResponse({ states: activeFeatureStates });
-      return true; // Keep channel open for async response
+      return true;
     }
 
-    // Handle voice control toggle
     if (request.action === "voiceControlEnabled") {
       toggleVoiceControl(request.enabled);
       activeFeatureStates.voiceControlEnabled = request.enabled;
       sendResponse({ success: true });
       return true;
     }
-    
+
     if (request.action === "getVoiceControlStatus") {
       sendResponse(getVoiceControlStatus());
       return true;
     }
 
-    // Handle all other feature toggles
     if (request.action && request.enabled !== undefined) {
       handleFeatureToggle(request.action, request.enabled);
       sendResponse({ success: true });
@@ -278,19 +242,18 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     return true;
   }
 
-  // Handle special cases
   switch (request.action) {
     case "applyFocusedReading":
-      // applyFocusedReadingToSelection();
+
       break;
     case "summarizeSelection":
       summarizeSelection();
       break;
     case "openMagnifiedImage":
-      // openMagnifiedImage(request.srcUrl);
+
       break;
     case "readImage":
-      // readImage(request.srcUrl);
+
       break;
     case "showDefinition":
       const selection = window.getSelection();
@@ -326,24 +289,16 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   }
 });
 
-
-// ============================================================
-// FEATURE: Text Summarization
-// DESCRIPTION: Summarizes selected text using AI
-// ============================================================
-
 import { pipeline } from '@xenova/transformers';
 
 async function summarizeSelection() {
   console.log('📝 Summarize selection called');
-  
-  // Always show loading overlay first
+
   createLoadingOverlay();
   console.log('✅ Loading overlay created');
-  
-  // Small delay to ensure overlay renders
+
   await new Promise(resolve => setTimeout(resolve, 50));
-  
+
   const selection = window.getSelection();
   if (!selection.rangeCount) {
     removeLoadingOverlay();
@@ -352,42 +307,39 @@ async function summarizeSelection() {
   }
   const range = selection.getRangeAt(0);
   const text = range.toString().trim();
-  
+
   if (!text || range.collapsed) {
     removeLoadingOverlay();
     alert('Please select some text first.');
     return;
   }
-  
-  // Check text length
+
   const wordCount = text.split(/\s+/).length;
   console.log('📊 Text length:', wordCount, 'words');
-  
+
   if (wordCount < 20) {
     removeLoadingOverlay();
     alert('Please select at least 20 words for summarization.');
     return;
   }
-  
+
   if (wordCount > 1000) {
     removeLoadingOverlay();
     alert('Text too long. Please select less than 1000 words.');
     return;
   }
-  
+
   console.log('✅ Text validation passed, starting summarization...');
   await summarizeText(text);
 }
 
-// Cache the summarizer to avoid reloading
 let cachedSummarizer = null;
 
 async function summarizeText(txt) {
   try {
     console.log('Starting summarization...');
     updateLoadingText('Loading AI model (first time may take 30-60 seconds)...');
-    
-    // Load or use cached summarizer
+
     if (!cachedSummarizer) {
       console.log('Loading model for first time...');
       cachedSummarizer = await pipeline('summarization', 'Xenova/distilbart-cnn-6-6');
@@ -395,31 +347,30 @@ async function summarizeText(txt) {
     } else {
       console.log('Using cached model');
     }
-    
+
     updateLoadingText('Summarizing text...');
-    
-    // Add timeout
-    const timeoutPromise = new Promise((_, reject) => 
+
+    const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Summarization timeout (60s)')), 60000)
     );
-    
+
     const summarizePromise = cachedSummarizer(txt, {
       max_length: 100,
       min_length: 20,
       do_sample: false
     });
-    
+
     const response = await Promise.race([summarizePromise, timeoutPromise]);
-    
+
     const selectedText = "Summary: " + response[0].summary_text;
     console.log('Summarization complete!');
-    
+
     removeLoadingOverlay();
     createPopup(selectedText);
   } catch (error) {
     console.error('Summarization error:', error);
     removeLoadingOverlay();
-    
+
     let errorMessage = 'Error: Could not summarize text.\n\n';
     if (error.message.includes('timeout')) {
       errorMessage += 'The summarization took too long. Try selecting shorter text.';
@@ -430,7 +381,7 @@ async function summarizeText(txt) {
     } else {
       errorMessage += error.message;
     }
-    
+
     alert(errorMessage);
   }
 }
@@ -458,7 +409,6 @@ function createPopup(summary) {
 
   document.body.appendChild(popup);
 
-  // Function to remove the popup
   function removePopup(event) {
     if (!popup.contains(event.target)) {
       document.body.removeChild(popup);
@@ -466,22 +416,20 @@ function createPopup(summary) {
     }
   }
 
-  // Add an event listener to detect clicks outside the popup
   setTimeout(() => {
     document.addEventListener('click', removePopup);
   }, 0);
 }
 
-// Add loading overlay
 const createLoadingOverlay = () => {
-  // Remove existing overlay if any
+
   const existingOverlay = document.getElementById('loadingOverlay');
   if (existingOverlay) {
     existingOverlay.remove();
   }
 
   console.log('🎨 Creating loading overlay...');
-  
+
   const overlay = document.createElement('div');
   overlay.id = 'loadingOverlay';
   overlay.style.position = 'fixed';
@@ -514,7 +462,6 @@ const createLoadingOverlay = () => {
   text.style.padding = '0 20px';
   text.textContent = 'Preparing to summarize...';
 
-  // Add keyframes for spinner animation
   const style = document.createElement('style');
   style.id = 'spinner-style';
   style.textContent = `
@@ -523,8 +470,7 @@ const createLoadingOverlay = () => {
       100% { transform: rotate(360deg); }
     }
   `;
-  
-  // Only add style if not already present
+
   if (!document.getElementById('spinner-style')) {
     document.head.appendChild(style);
   }
@@ -532,11 +478,10 @@ const createLoadingOverlay = () => {
   overlay.appendChild(spinner);
   overlay.appendChild(text);
   document.body.appendChild(overlay);
-  
+
   console.log('✅ Loading overlay added to page');
 };
 
-// Update loading text
 const updateLoadingText = (message) => {
   const text = document.getElementById('loadingText');
   if (text) {
@@ -544,7 +489,6 @@ const updateLoadingText = (message) => {
   }
 };
 
-// Remove loading overlay
 const removeLoadingOverlay = () => {
   const overlay = document.getElementById('loadingOverlay');
   if (overlay) {

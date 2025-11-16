@@ -20,7 +20,6 @@ export function togglePopupBlocker(enabled) {
       }
     `;
 
-    // Watch for new popups
     popupObserver = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         mutation.addedNodes.forEach((node) => {
