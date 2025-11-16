@@ -81,10 +81,10 @@ const Reviews = () => {
                 className="p-8 border-2 border-border hover:scale-105 transition-transform duration-300 flex-shrink-0 w-[350px]"
               >
                 <blockquote className="space-y-6">
-                  <p className="text-lg font-light leading-relaxed italic text-muted-foreground">
+                  <p className="text-lg font-semibold leading-relaxed italic" style={{ color: '#000000' }}>
                     "{review.quote}"
                   </p>
-                  <footer className="text-sm font-light text-foreground">
+                  <footer className="text-sm font-bold" style={{ color: '#000000' }}>
                     — {review.author}
                   </footer>
                 </blockquote>
@@ -100,10 +100,10 @@ const Reviews = () => {
                 className="p-8 border-2 border-border hover:scale-105 transition-transform duration-300 flex-shrink-0 w-[350px]"
               >
                 <blockquote className="space-y-6">
-                  <p className="text-lg font-light leading-relaxed italic text-muted-foreground">
+                  <p className="text-lg font-semibold leading-relaxed italic" style={{ color: '#000000' }}>
                     "{review.quote}"
                   </p>
-                  <footer className="text-sm font-light text-foreground">
+                  <footer className="text-sm font-bold" style={{ color: '#000000' }}>
                     — {review.author}
                   </footer>
                 </blockquote>
@@ -119,10 +119,10 @@ const Reviews = () => {
                 className="p-8 border-2 border-border hover:scale-105 transition-transform duration-300 flex-shrink-0 w-[350px]"
               >
                 <blockquote className="space-y-6">
-                  <p className="text-lg font-light leading-relaxed italic text-muted-foreground">
+                  <p className="text-lg font-semibold leading-relaxed italic" style={{ color: '#000000' }}>
                     "{review.quote}"
                   </p>
-                  <footer className="text-sm font-light text-foreground">
+                  <footer className="text-sm font-bold" style={{ color: '#000000' }}>
                     — {review.author}
                   </footer>
                 </blockquote>

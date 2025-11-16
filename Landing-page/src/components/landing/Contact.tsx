@@ -21,38 +21,31 @@ const Contact = () => {
 
   return (
     <section id="contact" className="container mx-auto px-6 py-24 md:py-32 bg-muted/30 relative overflow-hidden">
-      {/* Top Right - Eye/Vision Symbol */}
-      <div className="absolute top-8 right-8 opacity-40 pointer-events-none text-black">
-        <svg width="140" height="140" viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg">
-          {/* Eye shape */}
-          <ellipse cx="70" cy="70" rx="60" ry="35" stroke="currentColor" strokeWidth="5" />
-          {/* Iris */}
-          <circle cx="70" cy="70" r="20" stroke="currentColor" strokeWidth="5" />
-          {/* Pupil */}
-          <circle cx="70" cy="70" r="10" fill="currentColor" />
-          {/* Eyelashes/rays */}
-          <line x1="70" y1="30" x2="70" y2="20" stroke="currentColor" strokeWidth="4" />
-          <line x1="100" y1="50" x2="108" y2="45" stroke="currentColor" strokeWidth="4" />
-          <line x1="40" y1="50" x2="32" y2="45" stroke="currentColor" strokeWidth="4" />
-          <line x1="100" y1="90" x2="108" y2="95" stroke="currentColor" strokeWidth="4" />
-          <line x1="40" y1="90" x2="32" y2="95" stroke="currentColor" strokeWidth="4" />
+      {/* Decorative Circles */}
+      <div className="absolute top-20 left-10 w-32 h-32 border-4 border-black rounded-full opacity-60 animate-pulse"></div>
+      <div className="absolute top-40 right-20 w-24 h-24 border-4 border-black rounded-full opacity-70"></div>
+      <div className="absolute bottom-32 left-1/4 w-20 h-20 border-4 border-black rounded-full opacity-65"></div>
+      <div className="absolute bottom-20 right-1/3 w-16 h-16 bg-black rounded-full opacity-50"></div>
+      
+      {/* Decorative Stars */}
+      <div className="absolute top-32 right-10 opacity-70">
+        <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M30 0L36.18 23.82L60 30L36.18 36.18L30 60L23.82 36.18L0 30L23.82 23.82L30 0Z" fill="black"/>
         </svg>
       </div>
-
-      {/* Bottom Left - Accessibility/Brain Symbol */}
-      <div className="absolute bottom-8 left-8 opacity-40 pointer-events-none text-black">
-        <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-          {/* Brain outline */}
-          <path d="M40 30 Q30 30 30 40 Q30 50 35 55 Q30 60 30 70 Q30 80 40 85 Q40 90 50 90 L70 90 Q80 90 80 85 Q90 80 90 70 Q90 60 85 55 Q90 50 90 40 Q90 30 80 30 Q75 30 70 35 Q65 30 60 30 Q55 30 50 35 Q45 30 40 30 Z" 
-                stroke="currentColor" strokeWidth="5" fill="none" />
-          {/* Brain details */}
-          <path d="M50 40 Q55 45 60 40" stroke="currentColor" strokeWidth="4" fill="none" />
-          <path d="M65 45 Q70 50 75 45" stroke="currentColor" strokeWidth="4" fill="none" />
-          <path d="M45 60 Q50 65 55 60" stroke="currentColor" strokeWidth="4" fill="none" />
-          <path d="M65 65 Q70 70 75 65" stroke="currentColor" strokeWidth="4" fill="none" />
-          {/* Accessibility symbol - person */}
-          <circle cx="60" cy="55" r="6" stroke="currentColor" strokeWidth="4" fill="none" />
-          <path d="M60 61 L60 75 M55 68 L65 68" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+      <div className="absolute bottom-40 left-16 opacity-60">
+        <svg width="40" height="40" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M30 0L36.18 23.82L60 30L36.18 36.18L30 60L23.82 36.18L0 30L23.82 23.82L30 0Z" fill="black"/>
+        </svg>
+      </div>
+      <div className="absolute top-1/2 left-8 opacity-65">
+        <svg width="50" height="50" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M30 0L36.18 23.82L60 30L36.18 36.18L30 60L23.82 36.18L0 30L23.82 23.82L30 0Z" fill="black"/>
+        </svg>
+      </div>
+      <div className="absolute bottom-1/4 right-12 opacity-55">
+        <svg width="35" height="35" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M30 0L36.18 23.82L60 30L36.18 36.18L30 60L23.82 36.18L0 30L23.82 23.82L30 0Z" fill="black"/>
         </svg>
       </div>
 
@@ -78,51 +71,60 @@ const Contact = () => {
           </ScrollReveal>
         </div>
         
-        <Card className="p-8 border-2 border-border shadow-[0_20px_60px_rgba(0,0,0,0.3)] hover:shadow-[0_25px_70px_rgba(0,0,0,0.2)] transition-shadow duration-300">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <label htmlFor="name" className="text-sm font-light text-muted-foreground">
+        <Card className="p-10 md:p-12 border-4 border-black shadow-[0_20px_60px_rgba(0,0,0,0.4)] hover:shadow-[0_25px_70px_rgba(0,0,0,0.3)] transition-shadow duration-300 bg-white">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="space-y-3">
+              <label htmlFor="name" className="text-base font-bold text-black block">
                 Name
               </label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="border-2"
-                required
-              />
+              <div className="bg-gray-100 p-1 rounded-lg border-2 border-gray-200 focus-within:border-black focus-within:bg-white transition-all duration-200">
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="border-0 text-base py-6 px-4 bg-transparent focus:ring-0 focus:outline-none"
+                  placeholder="Enter your name"
+                  required
+                />
+              </div>
             </div>
             
-            <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-light text-muted-foreground">
+            <div className="space-y-3">
+              <label htmlFor="email" className="text-base font-bold text-black block">
                 Email
               </label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="border-2"
-                required
-              />
+              <div className="bg-gray-100 p-1 rounded-lg border-2 border-gray-200 focus-within:border-black focus-within:bg-white transition-all duration-200">
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="border-0 text-base py-6 px-4 bg-transparent focus:ring-0 focus:outline-none"
+                  placeholder="Enter your email"
+                  required
+                />
+              </div>
             </div>
             
-            <div className="space-y-2">
-              <label htmlFor="message" className="text-sm font-light text-muted-foreground">
+            <div className="space-y-3">
+              <label htmlFor="message" className="text-base font-bold text-black block">
                 Message
               </label>
-              <Textarea
-                id="message"
-                value={formData.message}
-                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                className="border-2 min-h-[150px]"
-                required
-              />
+              <div className="bg-gray-100 p-1 rounded-lg border-2 border-gray-200 focus-within:border-black focus-within:bg-white transition-all duration-200">
+                <Textarea
+                  id="message"
+                  value={formData.message}
+                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                  className="border-0 min-h-[180px] text-base py-4 px-4 bg-transparent focus:ring-0 focus:outline-none resize-none"
+                  placeholder="Write your message here..."
+                  required
+                />
+              </div>
             </div>
             
             <Button 
               type="submit"
-              className="w-full py-6 bg-primary hover:bg-charcoal transition-smooth border-2 border-primary"
+              className="w-full py-7 text-lg font-bold bg-black text-white hover:bg-gray-800 transition-all duration-300 border-3 border-black shadow-lg hover:shadow-xl"
               size="lg"
             >
               Send Message
@@ -130,6 +132,50 @@ const Contact = () => {
           </form>
         </Card>
       </div>
+
+      <style>{`
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-20px);
+          }
+        }
+
+        @keyframes rotate {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        #contact svg:nth-child(1) {
+          animation: rotate 20s linear infinite;
+        }
+
+        #contact svg:nth-child(2) {
+          animation: float 6s ease-in-out infinite;
+        }
+
+        #contact svg:nth-child(3) {
+          animation: rotate 15s linear infinite reverse;
+        }
+
+        #contact svg:nth-child(4) {
+          animation: float 8s ease-in-out infinite;
+        }
+
+        #contact .rounded-full:nth-child(2) {
+          animation: float 7s ease-in-out infinite;
+        }
+
+        #contact .rounded-full:nth-child(3) {
+          animation: float 9s ease-in-out infinite;
+        }
+      `}</style>
     </section>
   );
 };
